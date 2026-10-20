@@ -44,6 +44,11 @@ public final class ImageCacheService {
         }
     }
 
+    public func clear() {
+        cache.removeAllObjects()
+        URLCache.shared.removeAllCachedResponses()
+    }
+
     private func downsample(data: Data, to pointSize: CGSize, scale: CGFloat = 2.0) -> UIImage? {
         let imageSourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let imageSource = CGImageSourceCreateWithData(data as CFData, imageSourceOptions) else {

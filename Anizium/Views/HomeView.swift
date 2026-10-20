@@ -199,7 +199,7 @@ public struct HomeView: View {
                     episode: item.episode != nil ? Episode(
                         ID: "\(item.ID)_\(item.season ?? 1)_\(item.episode!)",
                         name: nil,
-                        number: StringOrNumber(item.episode!),
+                        number: StringOrNumber("\(item.episode!)"),
                         overview: nil,
                         release: nil,
                         run_time: nil,

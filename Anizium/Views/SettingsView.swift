@@ -236,7 +236,7 @@ public struct SettingsView: View {
     }
 
     private func clearCache() {
-        ImageCache.shared.clear()
+        ImageCacheService.shared.clear()
         cacheCleared = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             cacheCleared = false
