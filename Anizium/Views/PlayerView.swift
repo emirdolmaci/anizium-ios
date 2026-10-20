@@ -163,7 +163,7 @@ public struct PlayerView: View {
                 // Player Controls Overlay
                 if showControls {
                     PlayerControlsOverlay(
-                        title: "\(animeTitle) - \(episode.episodeNumber). Bölüm",
+                        title: episode != nil ? "\(animeTitle) - \(episode!.episodeNumber). Bölüm" : animeTitle,
                         isPlaying: $isPlaying,
                         currentTime: $currentTime,
                         duration: duration,
