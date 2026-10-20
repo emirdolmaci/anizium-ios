@@ -103,7 +103,7 @@ public struct CalendarView: View {
                                         Button(action: {
                                             selectedAnimeId = anime.ID
                                         }) {
-                                            AnimeCardView(anime: anime, width: nil)
+                                            AnimeCardView(anime: anime, width: 110)
                                         }
                                         .buttonStyle(ScaleButtonStyle())
                                     }

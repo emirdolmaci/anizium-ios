@@ -273,7 +273,7 @@ public struct UserProfileResponse: Codable {
 }
 
 public struct UserProfile: Codable, Identifiable {
-    public var id: String { ID ?? "" }
+    public var id: String { self.ID ?? "" }
     public let ID: String?
     public let nick: String?
     public let email: String?
@@ -286,7 +286,7 @@ public struct UserProfile: Codable, Identifiable {
 }
 
 public struct ProfileItem: Codable, Identifiable, Hashable {
-    public var id: String { ID ?? name ?? UUID().uuidString }
+    public var id: String { self.ID ?? self.name ?? UUID().uuidString }
     public let ID: String?
     public let name: String?
     public let avatar: String?
@@ -307,7 +307,7 @@ public struct CommentPage: Codable {
 }
 
 public struct CommentItem: Codable, Identifiable {
-    public var id: String { ID ?? UUID().uuidString }
+    public var id: String { self.ID ?? UUID().uuidString }
     public let ID: String?
     public let message: String?
     public let spoiler: Bool?
