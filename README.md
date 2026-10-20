@@ -57,7 +57,7 @@ Anizium iOS; telefon, tablet ve masaüstü Apple cihazlarının her birinin ekra
 
 ## 🎬 Öne Çıkan Başlıklar & Akış Vitrini
 
-Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) üzerinden 1080p yüksek kaliteli görseller ve yayın akışı çekilir:
+Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) üzerinden 1080p & 4K yüksek kaliteli görseller ve yayın akışı çekilir:
 
 <div align="center">
   <table>
