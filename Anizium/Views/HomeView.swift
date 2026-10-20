@@ -10,6 +10,7 @@ public struct HomeView: View {
     @State private var errorMessage: String?
     @State private var selectedAnimeId: String?
     @State private var isFetchingRandom = false
+    @State private var showProfilesSheet = false
 
     public init() {}
 
@@ -215,6 +216,28 @@ public struct HomeView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if auth.isLoggedIn {
+                        Button(action: { showProfilesSheet = true }) {
+                            if let avatarStr = auth.activeProfile?.displayAvatar, let url = URL(string: avatarStr) {
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image {
+                                        img.resizable().scaledToFill()
+                                    } else {
+                                        Circle().fill(Color.red)
+                                    }
+                                }
+                                .frame(width: 28, height: 28)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1.5))
+                            } else {
+                                Image(systemName: "person.crop.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         Text("ANIZIUM")
@@ -236,6 +259,9 @@ public struct HomeView: View {
                     }
                     .disabled(isFetchingRandom)
                 }
+            }
+            .sheet(isPresented: $showProfilesSheet) {
+                ProfileSelectionView()
             }
         }
         .onAppear {

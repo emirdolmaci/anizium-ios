@@ -25,6 +25,7 @@
 		A10000122D66000100000012 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000122D66000100000012 /* CalendarView.swift */; };
 		A10000132D66000100000013 /* LoginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000132D66000100000013 /* LoginSheetView.swift */; };
 		A10000142D66000100000014 /* PremiumPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000142D66000100000014 /* PremiumPlansView.swift */; };
+		A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000152D66000100000015 /* ProfileSelectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 		A20000122D66000100000012 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		A20000132D66000100000013 /* LoginSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth/LoginSheetView.swift; sourceTree = "<group>"; };
 		A20000142D66000100000014 /* PremiumPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumPlansView.swift; sourceTree = "<group>"; };
+		A20000152D66000100000015 /* ProfileSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +116,7 @@
 				A20000122D66000100000012 /* CalendarView.swift */,
 				A20000132D66000100000013 /* LoginSheetView.swift */,
 				A20000142D66000100000014 /* PremiumPlansView.swift */,
+				A20000152D66000100000015 /* ProfileSelectionView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -221,6 +224,7 @@
 				A10000122D66000100000012 /* CalendarView.swift in Sources */,
 				A10000132D66000100000013 /* LoginSheetView.swift in Sources */,
 				A10000142D66000100000014 /* PremiumPlansView.swift in Sources */,
+				A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

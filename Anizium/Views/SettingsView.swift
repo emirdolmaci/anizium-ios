@@ -8,6 +8,7 @@ public struct SettingsView: View {
 
     @State private var showLoginSheet = false
     @State private var showPremiumPlansSheet = false
+    @State private var showProfileSelection = false
     @State private var showLogoutConfirm = false
     @State private var cacheCleared = false
 
@@ -83,16 +84,27 @@ public struct SettingsView: View {
                             }
                             .padding(.vertical, 6)
 
-                            // Profile switcher if multiple
-                            if let profiles = auth.currentUser?.profiles, profiles.count > 1 {
-                                Picker("Aktif Profil", selection: Binding(
-                                    get: { auth.activeProfile ?? profiles[0] },
-                                    set: { auth.selectProfile($0) }
-                                )) {
-                                    ForEach(profiles) { p in
-                                        Text(p.name ?? "Profil").tag(p)
+                            // Profile switcher & manager
+                            Button(action: {
+                                showProfileSelection = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "person.2.circle.fill")
+                                        .foregroundColor(.red)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Profil Değiştir / Yönet")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.white)
+                                        Text("Kim izliyor? Profil ekle veya düzenle")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.white.opacity(0.5))
                                     }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.3))
                                 }
+                                .padding(.vertical, 2)
                             }
 
                             Button(role: .destructive, action: {
@@ -270,6 +282,9 @@ public struct SettingsView: View {
             }
             .sheet(isPresented: $showPremiumPlansSheet) {
                 PremiumPlansView()
+            }
+            .sheet(isPresented: $showProfileSelection) {
+                ProfileSelectionView()
             }
             .alert("Çıkış Yapılsın mı?", isPresented: $showLogoutConfirm) {
                 Button("İptal", role: .cancel) {}

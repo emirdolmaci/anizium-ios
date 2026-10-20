@@ -363,4 +363,62 @@ public final class AniziumAPI: ObservableObject {
         }
         return "Kod başarıyla kullanıldı."
     }
+
+    // MARK: - Profiles Management
+    public func createProfile(name: String) async throws {
+        let bodyDict: [String: Any] = [
+            "action": "create",
+            "name": name
+        ]
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/profile/manage", method: "POST", body: encryptedBody) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = errObj["msg"] as? String {
+                throw APIError.apiMessage(msg)
+            }
+            throw APIError.serverError(http.statusCode)
+        }
+    }
+
+    public func editProfile(id: String, name: String) async throws {
+        let bodyDict: [String: Any] = [
+            "action": "edit",
+            "id": id,
+            "name": name
+        ]
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/profile/manage", method: "POST", body: encryptedBody) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = errObj["msg"] as? String {
+                throw APIError.apiMessage(msg)
+            }
+            throw APIError.serverError(http.statusCode)
+        }
+    }
+
+    public func deleteProfile(id: String) async throws {
+        let bodyDict: [String: Any] = [
+            "id": id
+        ]
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/profile/delete", method: "POST", body: encryptedBody) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = errObj["msg"] as? String {
+                throw APIError.apiMessage(msg)
+            }
+            throw APIError.serverError(http.statusCode)
+        }
+    }
 }

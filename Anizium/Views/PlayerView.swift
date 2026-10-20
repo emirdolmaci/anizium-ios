@@ -15,6 +15,14 @@ public struct PlayerView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var api = AniziumAPI.shared
 
+    // Subtitle Customization Preferences (Persisted across sessions)
+    @AppStorage("sub_font_size") private var subFontSize: Double = 18.0
+    @AppStorage("sub_color_hex") private var subColorHex: String = "FFD700"
+    @AppStorage("sub_bg_mode") private var subBgMode: String = "semi_black" // "semi_black", "solid_black", "shadow_only"
+    @AppStorage("sub_bottom_offset") private var subBottomOffset: Double = 0.0
+
+    @State private var showSubtitleSettings = false
+
     public init(
         animeId: String,
         seasonNumber: Int? = nil,
@@ -63,6 +71,14 @@ public struct PlayerView: View {
     @State private var currentSubtitleText: String = ""
     @State private var selectedSubtitle: SubtitleItem?
 
+    private var subtitleBgColor: Color {
+        switch subBgMode {
+        case "solid_black": return Color.black
+        case "shadow_only": return Color.clear
+        default: return Color.black.opacity(0.75)
+        }
+    }
+
     public var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -103,20 +119,20 @@ public struct PlayerView: View {
                         }
                     }
 
-                // Subtitle Display Overlay
+                // Subtitle Display Overlay (Fully Customizable)
                 if !currentSubtitleText.isEmpty {
                     VStack {
                         Spacer()
                         Text(currentSubtitleText)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.yellow)
+                            .font(.system(size: CGFloat(subFontSize), weight: .bold))
+                            .foregroundColor(Color(hex: subColorHex))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
-                            .background(Color.black.opacity(0.75))
+                            .background(subtitleBgColor)
                             .cornerRadius(6)
-                            .padding(.bottom, showControls ? 90 : 30)
-                            .shadow(radius: 2)
+                            .shadow(color: .black, radius: subBgMode == "shadow_only" ? 5 : 2, x: 0, y: 1)
+                            .padding(.bottom, (showControls ? 95 : 35) + CGFloat(subBottomOffset))
                     }
                     .allowsHitTesting(false)
                 }
@@ -191,7 +207,20 @@ public struct PlayerView: View {
                         onSelectStream: switchQuality,
                         onSelectSpeed: setPlaybackSpeed,
                         onSelectSubtitle: switchSubtitle,
+                        onOpenSubtitleSettings: { showSubtitleSettings = true },
                         onClose: { dismiss() }
+                    )
+                    .transition(.opacity)
+                }
+
+                // Subtitle Appearance Customization Modal
+                if showSubtitleSettings {
+                    SubtitleSettingsModal(
+                        fontSize: $subFontSize,
+                        colorHex: $subColorHex,
+                        bgMode: $subBgMode,
+                        bottomOffset: $subBottomOffset,
+                        onClose: { showSubtitleSettings = false }
                     )
                     .transition(.opacity)
                 }
@@ -560,6 +589,7 @@ struct PlayerControlsOverlay: View {
     let onSelectStream: (StreamItem) -> Void
     let onSelectSpeed: (Float) -> Void
     let onSelectSubtitle: (SubtitleItem?) -> Void
+    let onOpenSubtitleSettings: () -> Void
     let onClose: () -> Void
 
     private func qualityTitle(for stream: StreamItem) -> String {
@@ -668,17 +698,25 @@ struct PlayerControlsOverlay: View {
                             .cornerRadius(5)
                     }
 
-                    // Subtitle Menu
+                    // Subtitle & Style Menu
                     Menu {
-                        Button("Kapalı") { onSelectSubtitle(nil) }
-                        ForEach(subtitles) { sub in
-                            Button(action: { onSelectSubtitle(sub) }) {
-                                HStack {
-                                    Text(sub.name ?? "Altyazı")
-                                    if sub.id == selectedSubtitle?.id {
-                                        Image(systemName: "checkmark")
+                        Section("ALTYAZI DİLİ") {
+                            Button("Kapalı") { onSelectSubtitle(nil) }
+                            ForEach(subtitles) { sub in
+                                Button(action: { onSelectSubtitle(sub) }) {
+                                    HStack {
+                                        Text(sub.name ?? "Altyazı")
+                                        if sub.id == selectedSubtitle?.id {
+                                            Image(systemName: "checkmark")
+                                        }
                                     }
                                 }
+                            }
+                        }
+
+                        Section("GÖRÜNÜM AYARLARI") {
+                            Button(action: onOpenSubtitleSettings) {
+                                Label("Altyazı Görünümünü Özelleştir", systemImage: "textformat.size")
                             }
                         }
                     } label: {
@@ -752,5 +790,160 @@ struct PlayerControlsOverlay: View {
             return String(format: "%02d:%02d:%02d", h, m, s)
         }
         return String(format: "%02d:%02d", m, s)
+    }
+}
+
+// Subtitle Appearance Customization Modal
+struct SubtitleSettingsModal: View {
+    @Binding var fontSize: Double
+    @Binding var colorHex: String
+    @Binding var bgMode: String
+    @Binding var bottomOffset: Double
+    let onClose: () -> Void
+
+    private let colors = [
+        ("Sarı", "FFD700"),
+        ("Beyaz", "FFFFFF"),
+        ("Cyan", "00E5FF"),
+        ("Yeşil", "69F0AE")
+    ]
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.7).ignoresSafeArea()
+                .onTapGesture { onClose() }
+
+            VStack(spacing: 16) {
+                // Header
+                HStack {
+                    Text("Altyazı Görünümü")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button("Kapat") { onClose() }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.red)
+                }
+
+                // Live Preview Box
+                VStack {
+                    Text("Senin adın ne? (Örnek Altyazı)")
+                        .font(.system(size: CGFloat(fontSize), weight: .bold))
+                        .foregroundColor(Color(hex: colorHex))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(previewBgColor)
+                        .cornerRadius(6)
+                        .shadow(color: .black, radius: bgMode == "shadow_only" ? 5 : 2, x: 0, y: 1)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 70)
+                .background(Color(hex: "121216"))
+                .cornerRadius(10)
+
+                // Font Size Control
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Yazı Boyutu")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.8))
+                        Spacer()
+                        Text("\(Int(fontSize)) pt")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+
+                    Picker("Boyut", selection: $fontSize) {
+                        Text("Küçük (14)").tag(14.0)
+                        Text("Normal (18)").tag(18.0)
+                        Text("Büyük (22)").tag(22.0)
+                        Text("Ekstra (26)").tag(26.0)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                // Color Selection
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Yazı Rengi")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+
+                    HStack(spacing: 12) {
+                        ForEach(colors, id: \.1) { item in
+                            Button(action: { colorHex = item.1 }) {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(hex: item.1))
+                                        .frame(width: 14, height: 14)
+                                    Text(item.0)
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(colorHex == item.1 ? .white : .white.opacity(0.6))
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(colorHex == item.1 ? Color.red.opacity(0.8) : Color.white.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+                }
+
+                // Background Style
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Arka Plan Stili")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+
+                    Picker("Stil", selection: $bgMode) {
+                        Text("Yarı Saydam").tag("semi_black")
+                        Text("Opak Siyah").tag("solid_black")
+                        Text("Kutusuz").tag("shadow_only")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                // Vertical Offset
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Dikey Konum")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+
+                    Picker("Konum", selection: $bottomOffset) {
+                        Text("Standart (Alt)").tag(0.0)
+                        Text("Yukarıda (+30)").tag(30.0)
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                // Reset Button
+                Button(action: resetToDefaults) {
+                    Text("Varsayılana Sıfırla")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .padding(.top, 4)
+            }
+            .padding(20)
+            .background(Color(hex: "1F1F24"))
+            .cornerRadius(16)
+            .padding(.horizontal, 24)
+            .shadow(radius: 20)
+        }
+    }
+
+    private var previewBgColor: Color {
+        switch bgMode {
+        case "solid_black": return Color.black
+        case "shadow_only": return Color.clear
+        default: return Color.black.opacity(0.75)
+        }
+    }
+
+    private func resetToDefaults() {
+        fontSize = 18.0
+        colorHex = "FFD700"
+        bgMode = "semi_black"
+        bottomOffset = 0.0
     }
 }
