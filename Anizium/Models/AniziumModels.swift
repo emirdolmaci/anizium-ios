@@ -183,6 +183,30 @@ public struct Episode: Codable, Identifiable {
         if let s = number?.stringValue, let i = Int(s) { return i }
         return 1
     }
+
+    public init(
+        ID: String,
+        name: String? = nil,
+        number: StringOrNumber? = nil,
+        overview: String? = nil,
+        release: String? = nil,
+        run_time: StringOrNumber? = nil,
+        quality: String? = nil,
+        banner_link: String? = nil,
+        next_episode: String? = nil,
+        download: Bool? = nil
+    ) {
+        self.ID = ID
+        self.name = name
+        self.number = number
+        self.overview = overview
+        self.release = release
+        self.run_time = run_time
+        self.quality = quality
+        self.banner_link = banner_link
+        self.next_episode = next_episode
+        self.download = download
+    }
 }
 
 // MARK: - Streaming Video Source Models

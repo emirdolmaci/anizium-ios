@@ -29,6 +29,7 @@
 		A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000162D66000100000016 /* AnimatedGIFView.swift */; };
 		A10000172D66000100000017 /* AvatarPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000172D66000100000017 /* AvatarPickerView.swift */; };
 		A10000182D66000100000018 /* SplashIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000182D66000100000018 /* SplashIntroView.swift */; };
+		A10000192D66000100000019 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000192D66000100000019 /* DownloadManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 		A20000162D66000100000016 /* AnimatedGIFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFView.swift; sourceTree = "<group>"; };
 		A20000172D66000100000017 /* AvatarPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarPickerView.swift; sourceTree = "<group>"; };
 		A20000182D66000100000018 /* SplashIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashIntroView.swift; sourceTree = "<group>"; };
+		A20000192D66000100000019 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +106,7 @@
 				A20000032D66000100000003 /* AniziumAPI.swift */,
 				A20000102D66000100000010 /* AuthManager.swift */,
 				A20000112D66000100000011 /* ImageCacheService.swift */,
+				A20000192D66000100000019 /* DownloadManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 				A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */,
 				A10000172D66000100000017 /* AvatarPickerView.swift in Sources */,
 				A10000182D66000100000018 /* SplashIntroView.swift in Sources */,
+				A10000192D66000100000019 /* DownloadManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,7 +299,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 154;
+				CURRENT_PROJECT_VERSION = 155;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Anizium/Info.plist;
@@ -303,7 +307,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.anizium.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -319,7 +323,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 154;
+				CURRENT_PROJECT_VERSION = 155;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Anizium/Info.plist;
@@ -327,7 +331,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.anizium.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

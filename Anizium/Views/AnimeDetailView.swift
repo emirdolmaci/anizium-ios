@@ -5,6 +5,7 @@ public struct AnimeDetailView: View {
 
     @StateObject private var api = AniziumAPI.shared
     @StateObject private var auth = AuthManager.shared
+    @StateObject private var downloadManager = DownloadManager.shared
     @State private var detail: AnimeDetail?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -20,6 +21,8 @@ public struct AnimeDetailView: View {
     @State private var isSpoilerComment = false
     @State private var isSendingComment = false
     @State private var showLoginSheet = false
+    @State private var showPremiumAlert = false
+    @State private var showPremiumPlans = false
     @State private var revealedSpoilers: Set<String> = []
 
     public init(animeId: String) {
@@ -229,7 +232,14 @@ public struct AnimeDetailView: View {
                                             Button(action: {
                                                 playingEpisode = ep
                                             }) {
-                                                EpisodeRowView(episode: ep)
+                                                EpisodeRowView(
+                                                    episode: ep,
+                                                    onDownload: {
+                                                        handleEpisodeDownload(ep)
+                                                    },
+                                                    isDownloaded: downloadManager.isDownloaded(id: ep.id),
+                                                    isDownloading: downloadManager.isDownloading(id: ep.id)
+                                                )
                                             }
                                             .buttonStyle(ScaleButtonStyle())
                                         }
@@ -343,7 +353,8 @@ public struct AnimeDetailView: View {
                     seasonNumber: (anime.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1,
                     episode: ep,
                     animeTitle: anime.name ?? "",
-                    isMovie: false
+                    isMovie: false,
+                    episodes: anime.seasons?[safe: selectedSeasonIndex]?.episodes
                 )
             }
         }
@@ -359,11 +370,47 @@ public struct AnimeDetailView: View {
         .sheet(isPresented: $showLoginSheet) {
             LoginSheetView()
         }
+        .alert("Premium Özellik", isPresented: $showPremiumAlert) {
+            Button("Planları İncele") {
+                showPremiumPlans = true
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Çevrimdışı indirme özelliği yalnızca Anizium Premium üyelerine özeldir. İstediğin bölümleri indirip internetsiz izlemek için Premium'a geçebilirsin.")
+        }
+        .sheet(isPresented: $showPremiumPlans) {
+            PremiumPlansView()
+        }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadDetail()
             checkWatchlist()
             loadComments()
+        }
+    }
+
+    private func handleEpisodeDownload(_ ep: Episode) {
+        if !auth.isLoggedIn {
+            showLoginSheet = true
+            return
+        }
+        guard auth.currentUser?.isPremium == true else {
+            showPremiumAlert = true
+            return
+        }
+        guard !downloadManager.isDownloaded(id: ep.id) && !downloadManager.isDownloading(id: ep.id) else {
+            return
+        }
+
+        let seasonNum = (detail?.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1
+        Task {
+            try? await downloadManager.downloadEpisode(
+                animeId: animeId,
+                animeTitle: detail?.name ?? "",
+                episode: ep,
+                seasonNumber: seasonNum,
+                posterURL: ep.banner_link ?? detail?.poster
+            )
         }
     }
 
@@ -511,6 +558,9 @@ struct CommentRowView: View {
 
 struct EpisodeRowView: View {
     let episode: Episode
+    var onDownload: (() -> Void)? = nil
+    var isDownloaded: Bool = false
+    var isDownloading: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -560,6 +610,29 @@ struct EpisodeRowView: View {
             }
 
             Spacer()
+
+            if let onDownload = onDownload {
+                Button(action: onDownload) {
+                    Group {
+                        if isDownloading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.7)
+                                .frame(width: 22, height: 22)
+                        } else if isDownloaded {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.green)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(6)
+                }
+                .buttonStyle(BorderlessButtonStyle())
+            }
 
             Image(systemName: "play.circle.fill")
                 .font(.system(size: 24))

@@ -19,11 +19,11 @@
   </p>
 
   <p align="center">
-    <a href="https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.ipa">
+    <a href="https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.ipa">
       <img src="https://img.shields.io/badge/%F0%9F%93%A6%20%C4%B0ndir-Anizium.ipa%20(iOS%20%2F%20iPadOS)-E50914?style=for-the-badge" height="38" />
     </a>
     &nbsp;
-    <a href="https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.dmg">
+    <a href="https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.dmg">
       <img src="https://img.shields.io/badge/%F0%9F%92%BB%20%C4%B0ndir-Anizium.dmg%20(macOS%20M1--M4)-222226?style=for-the-badge" height="38" />
     </a>
   </p>
@@ -113,15 +113,26 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
   <i>Oynatıcı içi canlı altyazı özelleştirme arayüzü</i>
 </div>
 
-### 4. 📅 Canlı Yayın Takvimi
+### 4. 🎛️ Profesyonel Oynatıcı Jestleri & Akıllı Denetimler
+- **Çift Dokunma ile Sarma**: Sol kenara çift dokunuşla `-10sn`, sağ kenara çift dokunuşla `+10sn` hassas geri/ileri sarma ve haptik titreşim destekli dinamik HUD dalgası.
+- **Kenar Kaydırma Hareketi (Parlaklık & Ses)**: Sol kenarda dikey kaydırma ile ekran parlaklığı, sağ kenarda dikey kaydırma ile ses düzeyi ayarı ve anlık yüzdelik gösterge.
+- **Hızlı Bölüm Çekmecesi**: Oynatıcıyı kapatmaya gerek kalmadan, tek dokunuşla sezonun tüm bölümlerini listeleyen yan çekmece üzerinden anında bölüm değiştirme.
+- **Tek Tıkla Ekran Kilidi**: İstenmeyen dokunmaları engelleyen ve tek dokunuşla kontrolleri gizleyen akıllı kilit mekanizması.
+
+### 5. ⬇️ Çevrimdışı İndirme & İnternetsiz İzleme (Premium)
+- **Cihaza Yerel Kayıt**: Anizium Premium üyelerine özel, bölümleri yerel hafızaya kaydedip metroda, uçakta veya internetsiz her ortamda kesintisiz izleme olanağı.
+- **Listem & İndirilenler Sekmesi**: İndirilen bölümleri dosya boyutlarıyla listeleme, anında yerel oynatma veya depolama alanı temizleme.
+- **Yetkisiz Erişim Koruması**: Premium üye olmayan kullanıcılara indirme kilitli olup Premium paketleri tanıtılır.
+
+### 6. 📅 Canlı Yayın Takvimi
 - Haftanın günlerine göre anlık yayın akışı (`api.anizium.co/page/calendar`).
 - Yeni bölümler sunucuya yüklendiği anda takvimde otomatik listelenir.
 
-### 5. 🔍 Akıllı Keşfet & 300ms Debounce Arama
+### 7. 🔍 Akıllı Keşfet & 300ms Debounce Arama
 - Milyonlarca anime, film ve dizi içinde harf yazdıkça anlık sorgulama.
 - Sunucuyu gereksiz isteklerden koruyan 300ms akıllı gecikme filtresi.
 
-### 6. 👑 Premium Üyelik Planları & Rozetler
+### 8. 👑 Premium Üyelik Planları & Rozetler
 - `anizium.co/premium` sistemiyle senkronize; 1 Ay, 3 Ay, 6 Ay, 1 Yıl ve Sınırsız üyelik tipleri.
 - Kalan gün sayacı ve hediye kodu (Gift Code) aktivasyonu.
 
@@ -140,7 +151,7 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
 1. **3uTools'u Hazırlayın**: [3uTools Resmi Sitesinden](http://www.3u.com/) programı kurun ve açın.
 2. **Cihazı Bağlayın**: iPhone veya iPad'inizi USB kablosuyla bilgisayara bağlayın. Ekranda çıkan **"Bu Bilgisayara Güven"** uyarısını onaylayıp kilit parolanızı girin.
 3. **İmza Aracına Geçin**: Üst menüden **Araçlar (Toolbox)** sekmesine tıklayın, açılan listeden **IPA İmzala (IPA Signature)** aracını açın.
-4. **IPA Dosyasını Ekleyin**: **IPA Ekle (Add IPA)** butonuna basarak bilgisayarınıza indirdiğiniz [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.ipa) dosyasını seçin.
+4. **IPA Dosyasını Ekleyin**: **IPA Ekle (Add IPA)** butonuna basarak bilgisayarınıza indirdiğiniz [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.ipa) dosyasını seçin.
 5. **Apple ID Tanımlayın**:
    * **"Apple Kimliği ile İmzala (Sign with Apple ID)"** kutucuğunu işaretleyin.
    * **Apple ID Ekle** butonuna basarak kendi Apple ID e-postanızı ve parolanızı yazın (Ücretsiz bireysel hesap geçerlidir, ücretli geliştirici hesabı gerekmez).
@@ -157,7 +168,7 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
 ### Yöntem 2: AltStore / SideStore ile Kurulum (Kablosuz & Otomatik Yenileme)
 
 1. Cihazınızda AltStore yüklü ve bilgisayarınızda AltServer çalışıyor olsun.
-2. Safari üzerinden [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.ipa) dosyasını indirin.
+2. Safari üzerinden [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.ipa) dosyasını indirin.
 3. AltStore -> **My Apps** sekmesine gelin, sol üstteki **"+"** ikonuna basıp dosyayı seçin.
 4. Kurulum bittiğinde uygulama 7 gün boyunca çalışır ve ev Wi-Fi ağınızdayken arka planda otomatik yenilenir.
 
@@ -175,7 +186,7 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
 ### Yöntem 4: TrollStore ile Kurulum (Kalıcı & Süresiz)
 
 *TrollStore destekleyen iOS sürümlerinde (iOS 14.0 - 16.6.1 / 17.0):*
-1. [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.ipa) dosyasını indirin.
+1. [Anizium.ipa](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.ipa) dosyasını indirin.
 2. Paylaş menüsünden TrollStore'u seçin ve **Install** butonuna dokunun.
 3. 7 gün süresi olmadan, kalıcı ve imzasız olarak çalışır.
 
@@ -183,7 +194,7 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
 
 ### Yöntem 5: macOS Apple Silicon (M1 / M2 / M3 / M4) Kurulumu 💻
 
-1. [Anizium.dmg](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.1.0/Anizium.dmg) dosyasını indirin ve çift tıklayarak açın.
+1. [Anizium.dmg](https://github.com/emirdolmaci/anizium-ios/releases/download/v2.2.0/Anizium.dmg) dosyasını indirin ve çift tıklayarak açın.
 2. `Anizium.app` ikonunu `Applications` (Uygulamalar) klasörüne sürükleyin.
 3. İlk açılışta Gatekeeper uyarısı alırsanız Terminal uygulamasında şu komutu çalıştırın:
    ```bash

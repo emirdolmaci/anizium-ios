@@ -4,6 +4,32 @@ import AVFoundation
 import CoreMedia
 import Combine
 
+public enum GestureHUDType: Equatable {
+    case brightness(Double)
+    case volume(Double)
+
+    var iconName: String {
+        switch self {
+        case .brightness: return "sun.max.fill"
+        case .volume: return "speaker.wave.3.fill"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .brightness: return "Parlaklık"
+        case .volume: return "Ses Seviyesi"
+        }
+    }
+
+    var value: Double {
+        switch self {
+        case .brightness(let v), .volume(let v):
+            return v
+        }
+    }
+}
+
 public struct PlayerView: View {
     public let animeId: String
     public let seasonNumber: Int?
@@ -11,9 +37,13 @@ public struct PlayerView: View {
     public let animeTitle: String
     public let isMovie: Bool
     public let startTime: Double
+    public let localURL: URL?
+    public let initialEpisodes: [Episode]?
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var api = AniziumAPI.shared
+    @StateObject private var auth = AuthManager.shared
+    @StateObject private var downloadManager = DownloadManager.shared
 
     // Subtitle Customization Preferences (Persisted across sessions)
     @AppStorage("sub_font_size") private var subFontSize: Double = 18.0
@@ -29,7 +59,9 @@ public struct PlayerView: View {
         episode: Episode? = nil,
         animeTitle: String,
         isMovie: Bool = false,
-        startTime: Double = 0
+        startTime: Double = 0,
+        localURL: URL? = nil,
+        episodes: [Episode]? = nil
     ) {
         self.animeId = animeId
         self.seasonNumber = seasonNumber
@@ -37,6 +69,8 @@ public struct PlayerView: View {
         self.animeTitle = animeTitle
         self.isMovie = isMovie
         self.startTime = startTime
+        self.localURL = localURL
+        self.initialEpisodes = episodes
     }
 
     @State private var player: AVPlayer?
@@ -44,6 +78,12 @@ public struct PlayerView: View {
     @State private var sourceResponse: SourceResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+
+    // Episode selection & drawer
+    @State private var currentEpisode: Episode?
+    @State private var currentSeasonNumber: Int?
+    @State private var allEpisodes: [Episode] = []
+    @State private var showEpisodesDrawer = false
 
     // Audio Dub Groups & Streams
     @State private var availableGroups: [SourceGroup] = []
@@ -74,6 +114,18 @@ public struct PlayerView: View {
     @State private var currentSubtitleText: String = ""
     @State private var selectedSubtitle: SubtitleItem?
 
+    // Gesture & HUD States
+    @State private var seekIndicatorForward: Bool? = nil
+    @State private var seekIndicatorTimer: Timer?
+    @State private var gestureHUD: GestureHUDType? = nil
+    @State private var gestureHUDTimer: Timer?
+    @State private var dragStartValue: Double? = nil
+
+    // Premium Prompt Modal / Sheet
+    @State private var showPremiumAlert = false
+    @State private var showPremiumPlans = false
+    @State private var showLoginSheet = false
+
     private var subtitleBgColor: Color {
         switch subBgMode {
         case "solid_black": return Color.black
@@ -82,219 +134,410 @@ public struct PlayerView: View {
         }
     }
 
-    public var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+    private var playerTitle: String {
+        if let ep = currentEpisode {
+            return "\(animeTitle) - \(ep.episodeNumber). Bölüm"
+        }
+        return animeTitle
+    }
 
-            if isLoading {
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .tint(.red)
-                        .scaleEffect(1.2)
-                    Text("Video ve ses kaynakları hazırlanıyor...")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-            } else if let error = errorMessage {
-                VStack(spacing: 16) {
-                    Image(systemName: "video.slash")
-                        .font(.system(size: 36))
-                        .foregroundColor(.red)
-                    Text(error)
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                    Button("Kapat") { dismiss() }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .cornerRadius(6)
-                }
-            } else if let player = player {
-                // Video Surface
-                CustomVideoPlayer(player: player)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        if isScreenLocked {
-                            withAnimation {
-                                showUnlockHint.toggle()
-                                if showUnlockHint {
+    public var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                if isLoading {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(.red)
+                            .scaleEffect(1.2)
+                        Text("Video ve ses kaynakları hazırlanıyor...")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                } else if let error = errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "video.slash")
+                            .font(.system(size: 36))
+                            .foregroundColor(.red)
+                        Text(error)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                        Button("Kapat") { dismiss() }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(Color.red)
+                            .cornerRadius(6)
+                    }
+                } else if let player = player {
+                    // Video Surface
+                    CustomVideoPlayer(player: player)
+                        .ignoresSafeArea()
+
+                    // Touch & Gesture Interaction Layer
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2, coordinateSpace: .local) { loc in
+                            guard !isScreenLocked else { return }
+                            let isRight = loc.x > (geo.size.width / 2)
+                            handleDoubleTapSeek(isForward: isRight)
+                        }
+                        .onTapGesture(count: 1) {
+                            handleSingleTap()
+                        }
+                        .gesture(
+                            DragGesture(minimumDistance: 15)
+                                .onChanged { val in
+                                    guard !isScreenLocked else { return }
+                                    handleVerticalDrag(val, in: geo.size)
+                                }
+                                .onEnded { _ in
+                                    hideGestureHUDWithDelay()
+                                }
+                        )
+
+                    // Double-Tap Seek Indicators (<< 10s or 10s >>)
+                    if let isForward = seekIndicatorForward {
+                        HStack {
+                            if !isForward {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "gobackward.10")
+                                        .font(.system(size: 26, weight: .bold))
+                                    Text("10 sn")
+                                        .font(.system(size: 14, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 12)
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Capsule())
+                                .padding(.leading, 40)
+                                Spacer()
+                            } else {
+                                Spacer()
+                                HStack(spacing: 8) {
+                                    Text("10 sn")
+                                        .font(.system(size: 14, weight: .bold))
+                                    Image(systemName: "goforward.10")
+                                        .font(.system(size: 26, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 12)
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Capsule())
+                                .padding(.trailing, 40)
+                            }
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                        .allowsHitTesting(false)
+                    }
+
+                    // Brightness & Volume Gesture HUD
+                    if let hud = gestureHUD {
+                        VStack(spacing: 10) {
+                            Image(systemName: hud.iconName)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.white)
+
+                            // Level Bar
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.25))
+                                    .frame(width: 120, height: 6)
+
+                                Capsule()
+                                    .fill(Color.red)
+                                    .frame(width: 120 * CGFloat(max(0.0, min(1.0, hud.value))), height: 6)
+                            }
+
+                            HStack(spacing: 4) {
+                                Text(hud.title)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.7))
+                                Text("\(Int(hud.value * 100))%")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(Color.black.opacity(0.75))
+                        .cornerRadius(12)
+                        .shadow(radius: 10)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                    }
+
+                    // Subtitle Display Overlay (Fully Customizable)
+                    if !currentSubtitleText.isEmpty {
+                        VStack {
+                            Spacer()
+                            Text(currentSubtitleText)
+                                .font(.system(size: CGFloat(subFontSize), weight: .bold))
+                                .foregroundColor(Color(hex: subColorHex))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(subtitleBgColor)
+                                .cornerRadius(6)
+                                .shadow(color: .black, radius: subBgMode == "shadow_only" ? 5 : 2, x: 0, y: 1)
+                                .padding(.bottom, (showControls ? 95 : 35) + CGFloat(subBottomOffset))
+                        }
+                        .allowsHitTesting(false)
+                    }
+
+                    // Skip Intro Button
+                    if showSkipIntro {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Button(action: skipIntro) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "forward.end.fill")
+                                        Text("İntroyu Atla")
+                                    }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                    .shadow(radius: 4)
+                                }
+                                .padding(.trailing, 24)
+                                .padding(.bottom, showControls ? 100 : 40)
+                            }
+                        }
+                    }
+
+                    // Next Episode Button
+                    if showNextEpisode {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Button(action: playNextEpisode) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "play.circle.fill")
+                                        Text("Sonraki Bölüm")
+                                    }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                                    .shadow(radius: 4)
+                                }
+                                .padding(.trailing, 24)
+                                .padding(.bottom, showControls ? 100 : 40)
+                            }
+                        }
+                    }
+
+                    // Player Controls Overlay
+                    if showControls && !isScreenLocked {
+                        PlayerControlsOverlay(
+                            title: playerTitle,
+                            isPlaying: $isPlaying,
+                            currentTime: $currentTime,
+                            duration: duration,
+                            hasEpisodes: !isMovie && (allEpisodes.count > 1 || currentEpisode != nil),
+                            canDownload: !isMovie && localURL == nil && currentEpisode != nil,
+                            isDownloaded: downloadManager.isDownloaded(id: currentEpisode?.id ?? ""),
+                            isDownloading: downloadManager.isDownloading(id: currentEpisode?.id ?? ""),
+                            availableGroups: availableGroups,
+                            selectedGroup: selectedGroup,
+                            availableStreams: availableStreams,
+                            selectedStream: selectedStream,
+                            playbackRate: playbackRate,
+                            subtitles: sourceResponse?.subtitles ?? [],
+                            selectedSubtitle: selectedSubtitle,
+                            onPlayPause: togglePlayPause,
+                            onSeek: seekTo,
+                            onToggleEpisodesDrawer: {
+                                withAnimation { showEpisodesDrawer.toggle() }
+                            },
+                            onDownloadTap: handleDownloadTap,
+                            onSelectGroup: switchAudioGroup,
+                            onSelectStream: switchQuality,
+                            onSelectSpeed: setPlaybackSpeed,
+                            onSelectSubtitle: switchSubtitle,
+                            onOpenSubtitleSettings: { showSubtitleSettings = true },
+                            onLockScreen: {
+                                withAnimation {
+                                    isScreenLocked = true
+                                    showControls = false
+                                    showUnlockHint = true
                                     unlockHintTimer?.invalidate()
                                     unlockHintTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
                                         withAnimation { self.showUnlockHint = false }
                                     }
                                 }
-                            }
-                        } else {
-                            withAnimation {
-                                showControls.toggle()
-                                if showControls { resetControlsTimer() }
-                            }
-                        }
+                            },
+                            onTapBackground: {
+                                withAnimation {
+                                    showControls = false
+                                }
+                            },
+                            onClose: { dismiss() }
+                        )
+                        .transition(.opacity)
                     }
 
-                // Subtitle Display Overlay (Fully Customizable)
-                if !currentSubtitleText.isEmpty {
-                    VStack {
-                        Spacer()
-                        Text(currentSubtitleText)
-                            .font(.system(size: CGFloat(subFontSize), weight: .bold))
-                            .foregroundColor(Color(hex: subColorHex))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(subtitleBgColor)
-                            .cornerRadius(6)
-                            .shadow(color: .black, radius: subBgMode == "shadow_only" ? 5 : 2, x: 0, y: 1)
-                            .padding(.bottom, (showControls ? 95 : 35) + CGFloat(subBottomOffset))
-                    }
-                    .allowsHitTesting(false)
-                }
-
-                // Skip Intro Button
-                if showSkipIntro {
-                    VStack {
-                        Spacer()
+                    // Quick Episode Drawer
+                    if showEpisodesDrawer {
                         HStack {
                             Spacer()
-                            Button(action: skipIntro) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "forward.end.fill")
-                                    Text("İntroyu Atla")
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack {
+                                    Text("Bölümler (\(allEpisodes.count))")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    Button(action: { withAnimation { showEpisodesDrawer = false } }) {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundColor(.white.opacity(0.7))
+                                            .padding(6)
+                                            .background(Color.white.opacity(0.1))
+                                            .clipShape(Circle())
+                                    }
                                 }
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.black)
                                 .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.white)
-                                .cornerRadius(8)
-                                .shadow(radius: 4)
-                            }
-                            .padding(.trailing, 24)
-                            .padding(.bottom, showControls ? 100 : 40)
-                        }
-                    }
-                }
+                                .padding(.vertical, 14)
+                                .background(Color(hex: "17171C"))
 
-                // Next Episode Button
-                if showNextEpisode {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            Button(action: playNextEpisode) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "play.circle.fill")
-                                    Text("Sonraki Bölüm")
+                                Divider().background(Color.white.opacity(0.1))
+
+                                if allEpisodes.isEmpty {
+                                    VStack(spacing: 8) {
+                                        Spacer()
+                                        ProgressView().tint(.red)
+                                        Text("Bölümler alınıyor...")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.white.opacity(0.6))
+                                        Spacer()
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                } else {
+                                    ScrollView(.vertical, showsIndicators: false) {
+                                        LazyVStack(spacing: 8) {
+                                            ForEach(allEpisodes) { ep in
+                                                let isCurrent = ep.id == currentEpisode?.id
+                                                Button(action: {
+                                                    selectEpisodeFromDrawer(ep)
+                                                }) {
+                                                    HStack(spacing: 10) {
+                                                        Text("\(ep.episodeNumber)")
+                                                            .font(.system(size: 12, weight: .bold))
+                                                            .foregroundColor(isCurrent ? .white : .white.opacity(0.7))
+                                                            .frame(width: 26, height: 26)
+                                                            .background(isCurrent ? Color.red : Color.white.opacity(0.1))
+                                                            .clipShape(Circle())
+
+                                                        VStack(alignment: .leading, spacing: 2) {
+                                                            Text(ep.name ?? "\(ep.episodeNumber). Bölüm")
+                                                                .font(.system(size: 13, weight: isCurrent ? .bold : .medium))
+                                                                .foregroundColor(isCurrent ? .red : .white)
+                                                                .lineLimit(1)
+
+                                                            if isCurrent {
+                                                                Text("Şu an oynatılıyor")
+                                                                    .font(.system(size: 10, weight: .bold))
+                                                                    .foregroundColor(.red.opacity(0.8))
+                                                            }
+                                                        }
+
+                                                        Spacer()
+
+                                                        if downloadManager.isDownloaded(id: ep.id) {
+                                                            Image(systemName: "checkmark.circle.fill")
+                                                                .foregroundColor(.green)
+                                                                .font(.system(size: 13))
+                                                        }
+                                                    }
+                                                    .padding(10)
+                                                    .background(isCurrent ? Color.red.opacity(0.15) : Color.white.opacity(0.04))
+                                                    .cornerRadius(8)
+                                                }
+                                            }
+                                        }
+                                        .padding(12)
+                                    }
                                 }
-                                .font(.system(size: 13, weight: .bold))
+                            }
+                            .frame(width: min(320, geo.size.width * 0.75))
+                            .background(Color(hex: "121216"))
+                            .shadow(color: .black.opacity(0.8), radius: 20)
+                        }
+                        .transition(.move(edge: .trailing))
+                    }
+
+                    // Screen Lock Floating Unlock Button
+                    if isScreenLocked && showUnlockHint {
+                        VStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation {
+                                    isScreenLocked = false
+                                    showUnlockHint = false
+                                    showControls = true
+                                    resetControlsTimer()
+                                }
+                                #if os(iOS)
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                #endif
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "lock.open.fill")
+                                        .font(.system(size: 15, weight: .bold))
+                                    Text("Ekran Kilidini Aç")
+                                        .font(.system(size: 14, weight: .bold))
+                                }
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.red)
-                                .cornerRadius(8)
-                                .shadow(radius: 4)
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 12)
+                                .background(Color.black.opacity(0.85))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 24)
+                                        .stroke(Color.red, lineWidth: 1.5)
+                                )
+                                .cornerRadius(24)
+                                .shadow(color: .red.opacity(0.5), radius: 10)
                             }
-                            .padding(.trailing, 24)
-                            .padding(.bottom, showControls ? 100 : 40)
+                            .padding(.bottom, 36)
                         }
+                        .transition(.opacity)
                     }
-                }
 
-                // Player Controls Overlay
-                if showControls && !isScreenLocked {
-                    PlayerControlsOverlay(
-                        title: episode != nil ? "\(animeTitle) - \(episode!.episodeNumber). Bölüm" : animeTitle,
-                        isPlaying: $isPlaying,
-                        currentTime: $currentTime,
-                        duration: duration,
-                        availableGroups: availableGroups,
-                        selectedGroup: selectedGroup,
-                        availableStreams: availableStreams,
-                        selectedStream: selectedStream,
-                        playbackRate: playbackRate,
-                        subtitles: sourceResponse?.subtitles ?? [],
-                        selectedSubtitle: selectedSubtitle,
-                        onPlayPause: togglePlayPause,
-                        onSeek: seekTo,
-                        onSelectGroup: switchAudioGroup,
-                        onSelectStream: switchQuality,
-                        onSelectSpeed: setPlaybackSpeed,
-                        onSelectSubtitle: switchSubtitle,
-                        onOpenSubtitleSettings: { showSubtitleSettings = true },
-                        onLockScreen: {
-                            withAnimation {
-                                isScreenLocked = true
-                                showControls = false
-                                showUnlockHint = true
-                                unlockHintTimer?.invalidate()
-                                unlockHintTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
-                                    withAnimation { self.showUnlockHint = false }
-                                }
-                            }
-                        },
-                        onTapBackground: {
-                            withAnimation {
-                                showControls = false
-                            }
-                        },
-                        onClose: { dismiss() }
-                    )
-                    .transition(.opacity)
-                }
-
-                // Screen Lock Floating Unlock Button
-                if isScreenLocked && showUnlockHint {
-                    VStack {
-                        Spacer()
-                        Button(action: {
-                            withAnimation {
-                                isScreenLocked = false
-                                showUnlockHint = false
-                                showControls = true
-                                resetControlsTimer()
-                            }
-                            #if os(iOS)
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            #endif
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "lock.open.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Ekran Kilidini Aç")
-                                    .font(.system(size: 14, weight: .bold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 22)
-                            .padding(.vertical, 12)
-                            .background(Color.black.opacity(0.85))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .stroke(Color.red, lineWidth: 1.5)
-                            )
-                            .cornerRadius(24)
-                            .shadow(color: .red.opacity(0.5), radius: 10)
-                        }
-                        .padding(.bottom, 36)
+                    // Subtitle Appearance Customization Modal
+                    if showSubtitleSettings {
+                        SubtitleSettingsModal(
+                            fontSize: $subFontSize,
+                            colorHex: $subColorHex,
+                            bgMode: $subBgMode,
+                            bottomOffset: $subBottomOffset,
+                            onClose: { showSubtitleSettings = false }
+                        )
+                        .transition(.opacity)
                     }
-                    .transition(.opacity)
-                }
-
-                // Subtitle Appearance Customization Modal
-                if showSubtitleSettings {
-                    SubtitleSettingsModal(
-                        fontSize: $subFontSize,
-                        colorHex: $subColorHex,
-                        bgMode: $subBgMode,
-                        bottomOffset: $subBottomOffset,
-                        onClose: { showSubtitleSettings = false }
-                    )
-                    .transition(.opacity)
                 }
             }
         }
         .onAppear {
+            self.currentEpisode = episode
+            self.currentSeasonNumber = seasonNumber
+            if let eps = initialEpisodes, !eps.isEmpty {
+                self.allEpisodes = eps
+            } else if !isMovie {
+                fetchEpisodesForDrawer()
+            }
+
             try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try? AVAudioSession.sharedInstance().setActive(true)
             loadSource()
@@ -303,22 +546,178 @@ public struct PlayerView: View {
             saveKeepWatchingProgress()
             cleanUpPlayer()
         }
+        .alert("Premium Özellik", isPresented: $showPremiumAlert) {
+            Button("Planları İncele") {
+                showPremiumPlans = true
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Çevrimdışı izleme özelliği yalnızca Anizium Premium üyelerine özeldir. Bölümleri cihazınıza indirip internetsiz izlemek için Premium'a geçebilirsiniz.")
+        }
+        .sheet(isPresented: $showPremiumPlans) {
+            PremiumPlansView()
+        }
+        .sheet(isPresented: $showLoginSheet) {
+            LoginSheetView()
+        }
+    }
+
+    // MARK: - Gestures & Interactions
+    private func handleSingleTap() {
+        if isScreenLocked {
+            withAnimation {
+                showUnlockHint.toggle()
+                if showUnlockHint {
+                    unlockHintTimer?.invalidate()
+                    unlockHintTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+                        withAnimation { self.showUnlockHint = false }
+                    }
+                }
+            }
+        } else {
+            withAnimation {
+                if showEpisodesDrawer {
+                    showEpisodesDrawer = false
+                } else {
+                    showControls.toggle()
+                    if showControls { resetControlsTimer() }
+                }
+            }
+        }
+    }
+
+    private func handleDoubleTapSeek(isForward: Bool) {
+        let delta: Double = isForward ? 10.0 : -10.0
+        seekTo(max(0, min(duration, currentTime + delta)))
+        #if os(iOS)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) {
+            self.seekIndicatorForward = isForward
+        }
+        seekIndicatorTimer?.invalidate()
+        seekIndicatorTimer = Timer.scheduledTimer(withTimeInterval: 0.85, repeats: false) { _ in
+            withAnimation(.easeOut(duration: 0.2)) {
+                self.seekIndicatorForward = nil
+            }
+        }
+    }
+
+    private func handleVerticalDrag(_ value: DragGesture.Value, in size: CGSize) {
+        let isLeft = value.startLocation.x < (size.width / 2)
+        if dragStartValue == nil {
+            #if os(iOS)
+            dragStartValue = isLeft ? Double(UIScreen.main.brightness) : Double(player?.volume ?? 1.0)
+            #else
+            dragStartValue = Double(player?.volume ?? 1.0)
+            #endif
+        }
+        let delta = -Double(value.translation.height / (size.height * 0.55))
+        let newVal = max(0.0, min(1.0, (dragStartValue ?? 0.5) + delta))
+
+        if isLeft {
+            #if os(iOS)
+            UIScreen.main.brightness = CGFloat(newVal)
+            #endif
+            showGestureHUD(.brightness(newVal))
+        } else {
+            player?.volume = Float(newVal)
+            showGestureHUD(.volume(newVal))
+        }
+    }
+
+    private func showGestureHUD(_ type: GestureHUDType) {
+        self.gestureHUD = type
+        gestureHUDTimer?.invalidate()
+    }
+
+    private func hideGestureHUDWithDelay() {
+        dragStartValue = nil
+        gestureHUDTimer?.invalidate()
+        gestureHUDTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: false) { _ in
+            withAnimation(.easeOut(duration: 0.25)) {
+                self.gestureHUD = nil
+            }
+        }
+    }
+
+    private func selectEpisodeFromDrawer(_ ep: Episode) {
+        cleanUpPlayer()
+        self.currentEpisode = ep
+        self.currentTime = 0
+        self.duration = 0
+        withAnimation {
+            self.showEpisodesDrawer = false
+        }
+        loadSource()
+    }
+
+    private func handleDownloadTap() {
+        if !auth.isLoggedIn {
+            showLoginSheet = true
+            return
+        }
+        guard auth.currentUser?.isPremium == true else {
+            showPremiumAlert = true
+            return
+        }
+        guard let ep = currentEpisode else { return }
+        if downloadManager.isDownloaded(id: ep.id) || downloadManager.isDownloading(id: ep.id) {
+            return
+        }
+
+        if let stream = selectedStream, let videoURL = URL(string: stream.link) {
+            downloadManager.startDownload(
+                animeId: animeId,
+                animeTitle: animeTitle,
+                episode: ep,
+                videoURL: videoURL,
+                posterURL: ep.banner_link
+            )
+        } else {
+            Task {
+                try? await downloadManager.downloadEpisode(
+                    animeId: animeId,
+                    animeTitle: animeTitle,
+                    episode: ep,
+                    seasonNumber: currentSeasonNumber ?? 1,
+                    posterURL: ep.banner_link
+                )
+            }
+        }
+    }
+
+    private func fetchEpisodesForDrawer() {
+        Task {
+            if let detail = try? await api.fetchAnimeDetail(id: animeId) {
+                let season = detail.seasons?.first(where: { $0.seasonNumber == self.currentSeasonNumber }) ?? detail.seasons?.first
+                await MainActor.run {
+                    self.allEpisodes = season?.episodes ?? []
+                }
+            }
+        }
     }
 
     // MARK: - Player Actions
     private func loadSource() {
+        if let local = localURL {
+            self.isLoading = false
+            initAVPlayer(url: local, startAt: startTime)
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         Task {
             do {
                 let res: SourceResponse
-                if isMovie || episode == nil {
+                if isMovie || currentEpisode == nil {
                     res = try await api.fetchMovieSource(id: animeId)
                 } else {
                     res = try await api.fetchSource(
                         id: animeId,
-                        season: seasonNumber ?? 1,
-                        episode: episode?.episodeNumber ?? 1
+                        season: currentSeasonNumber ?? 1,
+                        episode: currentEpisode?.episodeNumber ?? 1
                     )
                 }
                 await MainActor.run {
@@ -368,11 +767,12 @@ public struct PlayerView: View {
             ?? items.first!
         self.selectedStream = best
 
-        initAVPlayer(urlStr: best.link, startAt: resumeAt)
+        if let url = URL(string: best.link) {
+            initAVPlayer(url: url, startAt: resumeAt)
+        }
     }
 
-    private func initAVPlayer(urlStr: String, startAt: Double = 0) {
-        guard let url = URL(string: urlStr) else { return }
+    private func initAVPlayer(url: URL, startAt: Double = 0) {
         let playerItem = AVPlayerItem(url: url)
         let p = AVPlayer(playerItem: playerItem)
         self.player = p
@@ -423,7 +823,9 @@ public struct PlayerView: View {
         let matching = items.first(where: { $0.qualityInt == targetQuality }) ?? items.first!
         selectedStream = matching
 
-        initAVPlayer(urlStr: matching.link, startAt: currentPos)
+        if let url = URL(string: matching.link) {
+            initAVPlayer(url: url, startAt: currentPos)
+        }
     }
 
     private func switchQuality(to stream: StreamItem) {
@@ -431,7 +833,9 @@ public struct PlayerView: View {
         let currentPos = currentTime
         selectedStream = stream
         cleanUpPlayer()
-        initAVPlayer(urlStr: stream.link, startAt: currentPos)
+        if let url = URL(string: stream.link) {
+            initAVPlayer(url: url, startAt: currentPos)
+        }
     }
 
     private func setPlaybackSpeed(_ speed: Float) {
@@ -643,6 +1047,11 @@ struct PlayerControlsOverlay: View {
     @Binding var currentTime: Double
     let duration: Double
 
+    let hasEpisodes: Bool
+    let canDownload: Bool
+    let isDownloaded: Bool
+    let isDownloading: Bool
+
     let availableGroups: [SourceGroup]
     let selectedGroup: SourceGroup?
     let availableStreams: [StreamItem]
@@ -653,6 +1062,8 @@ struct PlayerControlsOverlay: View {
 
     let onPlayPause: () -> Void
     let onSeek: (Double) -> Void
+    let onToggleEpisodesDrawer: () -> Void
+    let onDownloadTap: () -> Void
     let onSelectGroup: (SourceGroup) -> Void
     let onSelectStream: (StreamItem) -> Void
     let onSelectSpeed: (Float) -> Void
@@ -683,10 +1094,10 @@ struct PlayerControlsOverlay: View {
 
             VStack {
                 // Top Header
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Button(action: onClose) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundColor(.white)
                             .padding(8)
                             .background(Color.white.opacity(0.15))
@@ -694,11 +1105,53 @@ struct PlayerControlsOverlay: View {
                     }
 
                     Text(title)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
 
                     Spacer()
+
+                    // Quick Episodes Drawer Button
+                    if hasEpisodes {
+                        Button(action: onToggleEpisodesDrawer) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "list.number")
+                                    .font(.system(size: 11))
+                                Text("Bölümler")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(5)
+                        }
+                    }
+
+                    // Download Button
+                    if canDownload {
+                        Button(action: onDownloadTap) {
+                            HStack(spacing: 4) {
+                                if isDownloading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.6)
+                                        .frame(width: 11, height: 11)
+                                } else {
+                                    Image(systemName: isDownloaded ? "checkmark.circle.fill" : "arrow.down.circle")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(isDownloaded ? .green : .white)
+                                }
+                                Text(isDownloaded ? "İndirildi" : "İndir")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(isDownloaded ? .green : .white)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(isDownloaded ? Color.green.opacity(0.2) : Color.white.opacity(0.2))
+                            .cornerRadius(5)
+                        }
+                    }
 
                     // Screen Lock Button
                     Button(action: onLockScreen) {

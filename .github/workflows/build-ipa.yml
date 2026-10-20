@@ -82,7 +82,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete v2.1.0 --yes || true
-          gh release create v2.1.0 dist/Anizium.ipa dist/Anizium.dmg \
-            --title "Anizium Universal v2.1.0 (.ipa & .dmg)" \
-            --notes "Anizium Universal Release (.ipa for iOS/iPadOS, .dmg for macOS Apple Silicon). Sideloading ready for 3uTools, AltStore, TrollStore, Scarlet, Sideloadly."
+          gh release delete v2.2.0 --yes || true
+          gh release create v2.2.0 dist/Anizium.ipa dist/Anizium.dmg \
+            --title "Anizium Universal v2.2.0 (.ipa & .dmg)" \
+            --notes "Anizium Universal Release v2.2.0: Double-tap seek (10s), Edge gesture brightness/volume with HUD, Quick Episodes Drawer, and Offline Downloads (Exclusive to Premium subscribers). Ready for 3uTools, AltStore, TrollStore, Scarlet, Sideloadly."
