@@ -4,12 +4,26 @@ public struct AnimeDetailView: View {
     public let animeId: String
 
     @StateObject private var api = AniziumAPI.shared
+    @StateObject private var auth = AuthManager.shared
     @State private var detail: AnimeDetail?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var selectedSeasonIndex = 0
     @State private var playingEpisode: Episode?
     @State private var isSavedInWatchlist = false
+
+    // Comments State
+    @State private var comments: [CommentItem] = []
+    @State private var isLoadingComments = false
+    @State private var newCommentText = ""
+    @State private var isSpoilerComment = false
+    @State private var isSendingComment = false
+    @State private var showLoginSheet = false
+    @State private var revealedSpoilers: Set<String> = []
+
+    public init(animeId: String) {
+        self.animeId = animeId
+    }
 
     public var body: some View {
         ZStack {
@@ -28,15 +42,16 @@ public struct AnimeDetailView: View {
                 }
             } else if let anime = detail {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 18) {
                         // Header Banner
                         ZStack(alignment: .bottomLeading) {
-                            AsyncImage(url: URL(string: anime.details_banner ?? anime.banner ?? anime.poster ?? "")) { phase in
-                                if let img = phase.image {
-                                    img.resizable().scaledToFill()
-                                } else {
-                                    Rectangle().fill(Color(hex: "1F1F24"))
-                                }
+                            CachedAsyncImage(
+                                url: URL(string: anime.details_banner ?? anime.banner ?? anime.poster ?? ""),
+                                targetSize: CGSize(width: 800, height: 480)
+                            ) { img in
+                                img.resizable().scaledToFill()
+                            } placeholder: {
+                                Rectangle().fill(Color(hex: "1F1F24"))
                             }
                             .frame(height: 260)
                             .clipped()
@@ -49,12 +64,13 @@ public struct AnimeDetailView: View {
 
                             // Title & Quick Info on Header
                             HStack(alignment: .bottom, spacing: 14) {
-                                AsyncImage(url: URL(string: anime.poster ?? "")) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().scaledToFill()
-                                    } else {
-                                        Rectangle().fill(Color.gray.opacity(0.3))
-                                    }
+                                CachedAsyncImage(
+                                    url: URL(string: anime.poster ?? ""),
+                                    targetSize: CGSize(width: 180, height: 260)
+                                ) { img in
+                                    img.resizable().scaledToFill()
+                                } placeholder: {
+                                    Rectangle().fill(Color.gray.opacity(0.3))
                                 }
                                 .frame(width: 90, height: 130)
                                 .cornerRadius(8)
@@ -169,7 +185,6 @@ public struct AnimeDetailView: View {
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 16)
 
-                                // Season Tabs if multiple seasons
                                 if seasons.count > 1 {
                                     ScrollView(.horizontal, showsIndicators: false) {
                                         HStack(spacing: 10) {
@@ -191,7 +206,6 @@ public struct AnimeDetailView: View {
                                     }
                                 }
 
-                                // Episodes list for current season
                                 let currentSeason = seasons[safe: selectedSeasonIndex] ?? seasons[0]
                                 if let episodes = currentSeason.episodes {
                                     LazyVStack(spacing: 12) {
@@ -206,6 +220,98 @@ public struct AnimeDetailView: View {
                                     }
                                     .padding(.horizontal, 16)
                                 }
+                            }
+                        }
+
+                        // Comments Section
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                Text("Yorumlar")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text("\(comments.count)")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            .padding(.horizontal, 16)
+
+                            // Add Comment Bar
+                            if auth.isLoggedIn {
+                                VStack(spacing: 8) {
+                                    HStack(spacing: 10) {
+                                        TextField("Yorumunuzu yazın...", text: $newCommentText)
+                                            .padding(10)
+                                            .background(Color(hex: "1F1F24"))
+                                            .cornerRadius(8)
+                                            .foregroundColor(.white)
+
+                                        Button(action: sendCommentAction) {
+                                            if isSendingComment {
+                                                ProgressView().tint(.white)
+                                            } else {
+                                                Image(systemName: "paperplane.fill")
+                                                    .foregroundColor(.white)
+                                                    .padding(10)
+                                                    .background(Color.red)
+                                                    .cornerRadius(8)
+                                            }
+                                        }
+                                        .disabled(newCommentText.trimmingCharacters(in: .whitespaces).isEmpty || isSendingComment)
+                                    }
+
+                                    Toggle("Spoiler içeriyor", isOn: $isSpoilerComment)
+                                        .tint(.red)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                .padding(.horizontal, 16)
+                            } else {
+                                Button(action: { showLoginSheet = true }) {
+                                    HStack {
+                                        Image(systemName: "person.crop.circle.badge.plus")
+                                        Text("Yorum yapmak için giriş yapın")
+                                    }
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color(hex: "1F1F24"))
+                                    .cornerRadius(8)
+                                }
+                                .padding(.horizontal, 16)
+                            }
+
+                            // Comments List
+                            if isLoadingComments {
+                                HStack {
+                                    Spacer()
+                                    ProgressView().tint(.red)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 16)
+                            } else if comments.isEmpty {
+                                Text("Henüz yorum yapılmamış. İlk yorumu sen yaz!")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .padding(.horizontal, 16)
+                            } else {
+                                LazyVStack(spacing: 12) {
+                                    ForEach(comments) { comment in
+                                        CommentRowView(
+                                            comment: comment,
+                                            isSpoilerRevealed: revealedSpoilers.contains(comment.id),
+                                            onToggleSpoiler: {
+                                                if revealedSpoilers.contains(comment.id) {
+                                                    revealedSpoilers.remove(comment.id)
+                                                } else {
+                                                    revealedSpoilers.insert(comment.id)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 16)
                             }
                         }
 
@@ -224,10 +330,14 @@ public struct AnimeDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $showLoginSheet) {
+            LoginSheetView()
+        }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadDetail()
             checkWatchlist()
+            loadComments()
         }
     }
 
@@ -245,6 +355,37 @@ public struct AnimeDetailView: View {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isLoading = false
+                }
+            }
+        }
+    }
+
+    private func loadComments() {
+        isLoadingComments = true
+        Task {
+            let res = try? await api.fetchComments(animeId: animeId)
+            await MainActor.run {
+                self.comments = res ?? []
+                self.isLoadingComments = false
+            }
+        }
+    }
+
+    private func sendCommentAction() {
+        let msg = newCommentText.trimmingCharacters(in: .whitespaces)
+        guard !msg.isEmpty else { return }
+        isSendingComment = true
+        Task {
+            do {
+                try await api.sendComment(animeId: animeId, message: msg, spoiler: isSpoilerComment)
+                await MainActor.run {
+                    self.newCommentText = ""
+                    self.isSendingComment = false
+                    loadComments()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isSendingComment = false
                 }
             }
         }
@@ -268,18 +409,97 @@ public struct AnimeDetailView: View {
     }
 }
 
+struct CommentRowView: View {
+    let comment: CommentItem
+    let isSpoilerRevealed: Bool
+    let onToggleSpoiler: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Avatar
+            if let avatar = comment.profile_avatar, let url = URL(string: avatar) {
+                CachedAsyncImage(url: url, targetSize: CGSize(width: 72, height: 72)) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    Circle().fill(Color.gray.opacity(0.3))
+                }
+                .frame(width: 36, height: 36)
+                .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color.red.opacity(0.8))
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Text(String((comment.user_nick ?? comment.profile_name ?? "A").prefix(1)).uppercased())
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(comment.user_nick ?? comment.profile_name ?? "Anonim")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+
+                    if comment.spoiler == true {
+                        Text("SPOILER")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.yellow)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.yellow.opacity(0.2))
+                            .cornerRadius(3)
+                    }
+
+                    Spacer()
+
+                    if let like = comment.like?.stringValue, like != "0" {
+                        HStack(spacing: 3) {
+                            Image(systemName: "hand.thumbsup.fill")
+                                .font(.system(size: 10))
+                            Text(like)
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.white.opacity(0.5))
+                    }
+                }
+
+                if comment.spoiler == true && !isSpoilerRevealed {
+                    Button(action: onToggleSpoiler) {
+                        Text("Spoiler içeriyor (Görmek için dokunun)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.yellow.opacity(0.9))
+                            .padding(6)
+                            .background(Color.yellow.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                } else {
+                    Text(comment.message ?? "")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.85))
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(hex: "16161B"))
+        .cornerRadius(10)
+    }
+}
+
 struct EpisodeRowView: View {
     let episode: Episode
 
     var body: some View {
         HStack(spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
-                AsyncImage(url: URL(string: episode.banner_link ?? "")) { phase in
-                    if let img = phase.image {
-                        img.resizable().scaledToFill()
-                    } else {
-                        Rectangle().fill(Color(hex: "1F1F24"))
-                    }
+                CachedAsyncImage(
+                    url: URL(string: episode.banner_link ?? ""),
+                    targetSize: CGSize(width: 240, height: 140)
+                ) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    Rectangle().fill(Color(hex: "1F1F24"))
                 }
                 .frame(width: 120, height: 70)
                 .cornerRadius(6)

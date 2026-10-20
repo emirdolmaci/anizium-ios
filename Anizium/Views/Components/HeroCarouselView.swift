@@ -9,17 +9,17 @@ public struct HeroCarouselView: View {
         TabView(selection: $currentIndex) {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 ZStack(alignment: .bottomLeading) {
-                    // Backdrop Image
-                    AsyncImage(url: URL(string: item.banner ?? item.poster ?? "")) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img
-                                .resizable()
-                                .scaledToFill()
-                        default:
-                            Rectangle()
-                                .fill(Color(hex: "18181C"))
-                        }
+                    // Backdrop Image with caching
+                    CachedAsyncImage(
+                        url: URL(string: item.banner ?? item.poster ?? ""),
+                        targetSize: CGSize(width: 800, height: 500)
+                    ) { img in
+                        img
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Rectangle()
+                            .fill(Color(hex: "18181C"))
                     }
                     .frame(height: 420)
                     .clipped()
@@ -34,17 +34,15 @@ public struct HeroCarouselView: View {
                     // Content overlay
                     VStack(alignment: .leading, spacing: 10) {
                         if let logoUrl = item.logo, let url = URL(string: logoUrl) {
-                            AsyncImage(url: url) { phase in
-                                if let img = phase.image {
-                                    img
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(maxHeight: 60)
-                                } else {
-                                    Text(item.name ?? "")
-                                        .font(.system(size: 24, weight: .black))
-                                        .foregroundColor(.white)
-                                }
+                            CachedAsyncImage(url: url, targetSize: CGSize(width: 400, height: 120)) { img in
+                                img
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxHeight: 60)
+                            } placeholder: {
+                                Text(item.name ?? "")
+                                    .font(.system(size: 24, weight: .black))
+                                    .foregroundColor(.white)
                             }
                         } else {
                             Text(item.name ?? "")

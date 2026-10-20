@@ -20,30 +20,21 @@ public struct AnimeCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 ZStack(alignment: .bottomLeading) {
-                    AsyncImage(url: posterURL) { phase in
-                        switch phase {
-                        case .empty:
-                            Rectangle()
-                                .fill(Color(hex: "1F1F24"))
-                                .overlay(
-                                    ProgressView()
-                                        .tint(.white.opacity(0.6))
-                                )
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            Rectangle()
-                                .fill(Color(hex: "1F1F24"))
-                                .overlay(
-                                    Image(systemName: "film")
-                                        .foregroundColor(.white.opacity(0.3))
-                                        .font(.title2)
-                                )
-                        @unknown default:
-                            EmptyView()
-                        }
+                    CachedAsyncImage(
+                        url: posterURL,
+                        targetSize: CGSize(width: width * 2, height: width * 2.9)
+                    ) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Rectangle()
+                            .fill(Color(hex: "1F1F24"))
+                            .overlay(
+                                Image(systemName: "film")
+                                    .foregroundColor(.white.opacity(0.2))
+                                    .font(.title3)
+                            )
                     }
                     .frame(width: width, height: width * 1.45)
                     .clipped()
@@ -70,7 +61,7 @@ public struct AnimeCardView: View {
                     }
                 }
 
-                // Top right quality or rating badge
+                // Top right rating badge
                 if let score = anime.rating, !score.isEmpty {
                     HStack(spacing: 2) {
                         Image(systemName: "star.fill")

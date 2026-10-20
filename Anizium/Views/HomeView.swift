@@ -6,6 +6,9 @@ public struct HomeView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var selectedAnimeId: String?
+    @State private var isFetchingRandom = false
+
+    public init() {}
 
     public var body: some View {
         NavigationStack {
@@ -115,6 +118,20 @@ public struct HomeView: View {
                             .foregroundColor(.red)
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: openRandomAnime) {
+                        if isFetchingRandom {
+                            ProgressView()
+                                .tint(.red)
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "dice.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .disabled(isFetchingRandom)
+                }
             }
         }
         .onAppear {
@@ -146,6 +163,23 @@ public struct HomeView: View {
             }
         }
     }
+
+    private func openRandomAnime() {
+        isFetchingRandom = true
+        Task {
+            do {
+                let id = try await api.fetchRandomAnimeId()
+                await MainActor.run {
+                    self.isFetchingRandom = false
+                    self.selectedAnimeId = id
+                }
+            } catch {
+                await MainActor.run {
+                    self.isFetchingRandom = false
+                }
+            }
+        }
+    }
 }
 
 struct SettlementRowView: View {
@@ -165,12 +199,13 @@ struct SettlementRowView: View {
                     ForEach(items) { item in
                         Button(action: { onSelect(item) }) {
                             ZStack(alignment: .bottomLeading) {
-                                AsyncImage(url: URL(string: item.banner ?? item.poster ?? "")) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().scaledToFill()
-                                    } else {
-                                        Rectangle().fill(Color(hex: "1A1A20"))
-                                    }
+                                CachedAsyncImage(
+                                    url: URL(string: item.banner ?? item.poster ?? ""),
+                                    targetSize: CGSize(width: 520, height: 280)
+                                ) { img in
+                                    img.resizable().scaledToFill()
+                                } placeholder: {
+                                    Rectangle().fill(Color(hex: "1A1A20"))
                                 }
                                 .frame(width: 260, height: 140)
                                 .cornerRadius(10)

@@ -20,6 +20,10 @@
 		A100000B2D6600010000000B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B2D6600010000000B /* SettingsView.swift */; };
 		A100000C2D6600010000000C /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C2D6600010000000C /* MainTabView.swift */; };
 		A100000D2D6600010000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A200000D2D6600010000000D /* Assets.xcassets */; };
+		A10000102D66000100000010 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000102D66000100000010 /* AuthManager.swift */; };
+		A10000112D66000100000011 /* ImageCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000112D66000100000011 /* ImageCacheService.swift */; };
+		A10000122D66000100000012 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000122D66000100000012 /* CalendarView.swift */; };
+		A10000132D66000100000013 /* LoginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000132D66000100000013 /* LoginSheetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +42,10 @@
 		A200000C2D6600010000000C /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		A200000D2D6600010000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A200000E2D6600010000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000102D66000100000010 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		A20000112D66000100000011 /* ImageCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheService.swift; sourceTree = "<group>"; };
+		A20000122D66000100000012 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		A20000132D66000100000013 /* LoginSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth/LoginSheetView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +92,8 @@
 			isa = PBXGroup;
 			children = (
 				A20000032D66000100000003 /* AniziumAPI.swift */,
+				A20000102D66000100000010 /* AuthManager.swift */,
+				A20000112D66000100000011 /* ImageCacheService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -99,6 +109,8 @@
 				A200000A2D6600010000000A /* WatchlistView.swift */,
 				A200000B2D6600010000000B /* SettingsView.swift */,
 				A200000C2D6600010000000C /* MainTabView.swift */,
+				A20000122D66000100000012 /* CalendarView.swift */,
+				A20000132D66000100000013 /* LoginSheetView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -201,6 +213,10 @@
 				A100000A2D6600010000000A /* WatchlistView.swift in Sources */,
 				A100000B2D6600010000000B /* SettingsView.swift in Sources */,
 				A100000C2D6600010000000C /* MainTabView.swift in Sources */,
+				A10000102D66000100000010 /* AuthManager.swift in Sources */,
+				A10000112D66000100000011 /* ImageCacheService.swift in Sources */,
+				A10000122D66000100000012 /* CalendarView.swift in Sources */,
+				A10000132D66000100000013 /* LoginSheetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

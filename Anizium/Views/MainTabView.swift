@@ -4,7 +4,6 @@ public struct MainTabView: View {
     @State private var selectedTab = 0
 
     public init() {
-        // Dark translucent tab bar
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Color(hex: "121216"))
@@ -28,19 +27,26 @@ public struct MainTabView: View {
                 }
                 .tag(1)
 
-            WatchlistView()
+            CalendarView()
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "bookmark.fill" : "bookmark")
-                    Text("Listem")
+                    Image(systemName: selectedTab == 2 ? "calendar.badge.clock" : "calendar")
+                    Text("Takvim")
                 }
                 .tag(2)
 
-            SettingsView()
+            WatchlistView()
                 .tabItem {
-                    Image(systemName: selectedTab == 3 ? "gearshape.fill" : "gearshape")
-                    Text("Ayarlar")
+                    Image(systemName: selectedTab == 3 ? "bookmark.fill" : "bookmark")
+                    Text("Listem")
                 }
                 .tag(3)
+
+            SettingsView()
+                .tabItem {
+                    Image(systemName: selectedTab == 4 ? "gearshape.fill" : "gearshape")
+                    Text("Ayarlar")
+                }
+                .tag(4)
         }
         .tint(.red)
         .preferredColorScheme(.dark)

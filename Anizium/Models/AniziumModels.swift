@@ -256,3 +256,86 @@ public struct PaginatedPage: Codable {
     public let total_pages: StringOrNumber?
     public let data: [AnimeCard]?
 }
+
+// MARK: - Authentication & User Models
+public struct LoginResponse: Codable {
+    public let success: Bool?
+    public let isError: Bool?
+    public let msg: String?
+    public let message: String?
+    public let statusCode: Int?
+    public let session: String?
+}
+
+public struct UserProfileResponse: Codable {
+    public let success: Bool?
+    public let data: UserProfile?
+}
+
+public struct UserProfile: Codable, Identifiable {
+    public var id: String { ID ?? "" }
+    public let ID: String?
+    public let nick: String?
+    public let email: String?
+    public let name: String?
+    public let surname: String?
+    public let profiles: [ProfileItem]?
+    public let subscription: Bool?
+    public let premium: Bool?
+    public let staff: Bool?
+}
+
+public struct ProfileItem: Codable, Identifiable, Hashable {
+    public var id: String { ID ?? name ?? UUID().uuidString }
+    public let ID: String?
+    public let name: String?
+    public let avatar: String?
+    public let adult: Bool?
+    public let pin: Bool?
+}
+
+// MARK: - Comments Models
+public struct CommentListResponse: Codable {
+    public let success: Bool?
+    public let page: CommentPage?
+}
+
+public struct CommentPage: Codable {
+    public let page: StringOrNumber?
+    public let total_pages: StringOrNumber?
+    public let data: [CommentItem]?
+}
+
+public struct CommentItem: Codable, Identifiable {
+    public var id: String { ID ?? UUID().uuidString }
+    public let ID: String?
+    public let message: String?
+    public let spoiler: Bool?
+    public let user_nick: String?
+    public let profile_name: String?
+    public let profile_avatar: String?
+    public let like: StringOrNumber?
+    public let dislike: StringOrNumber?
+    public let created: StringOrNumber?
+    public let replys: [CommentItem]?
+}
+
+// MARK: - Weekly Release Calendar Models
+public struct CalendarResponse: Codable {
+    public let success: Bool?
+    public let data: [CalendarDay]?
+}
+
+public struct CalendarDay: Codable, Identifiable {
+    public var id: String { self.title ?? self.day_name ?? UUID().uuidString }
+    public let title: String?
+    public let month_name: String?
+    public let day_name: String?
+    public let contents: [AnimeCard]?
+}
+
+// MARK: - Random Anime
+public struct RandomAnimeResponse: Codable {
+    public let success: Bool?
+    public let id: StringOrNumber?
+}
