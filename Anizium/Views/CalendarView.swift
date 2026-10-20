@@ -85,9 +85,9 @@ public struct CalendarView: View {
                         // Anime Cards Grid
                         ScrollView {
                             let currentDay = days[safe: selectedIndex] ?? days[0]
-                            let animes = currentDay.contents ?? []
+                            let items = currentDay.contents ?? []
 
-                            if animes.isEmpty {
+                            if items.isEmpty {
                                 VStack(spacing: 12) {
                                     Spacer(minLength: 60)
                                     Image(systemName: "tv.slash")
@@ -99,11 +99,11 @@ public struct CalendarView: View {
                                 }
                             } else {
                                 LazyVGrid(columns: columns, spacing: 14) {
-                                    ForEach(animes) { anime in
+                                    ForEach(items) { item in
                                         Button(action: {
-                                            selectedAnimeId = anime.ID
+                                            selectedAnimeId = item.animeCard.ID
                                         }) {
-                                            AnimeCardView(anime: anime, width: 110)
+                                            AnimeCardView(anime: item.animeCard, width: 110)
                                         }
                                         .buttonStyle(ScaleButtonStyle())
                                     }

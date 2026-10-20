@@ -328,10 +328,56 @@ public struct CalendarResponse: Codable {
 
 public struct CalendarDay: Codable, Identifiable {
     public var id: String { self.title ?? self.day_name ?? UUID().uuidString }
+    public let idField: String?
     public let title: String?
     public let month_name: String?
     public let day_name: String?
-    public let contents: [AnimeCard]?
+    public let contents: [CalendarItem]?
+
+    enum CodingKeys: String, CodingKey {
+        case idField = "id"
+        case title
+        case month_name
+        case day_name
+        case contents
+    }
+}
+
+public struct CalendarItem: Codable, Identifiable {
+    public var id: String { self.content_id ?? self.ID ?? self._id ?? UUID().uuidString }
+    public let _id: String?
+    public let ID: String?
+    public let content_id: String?
+    public let content_type: String?
+    public let content: CalendarContent?
+
+    public var animeCard: AnimeCard {
+        AnimeCard(
+            ID: self.content_id ?? self.ID ?? "",
+            name: self.content?.name,
+            poster: self.content?.poster,
+            banner: self.content?.banner,
+            banner_link: self.content?.details_banner ?? self.content?.banner,
+            logo: self.content?.logo,
+            quality: "4k",
+            type: self.content_type,
+            tmdb_point: nil,
+            imdb_point: nil,
+            mal_point: nil,
+            episode_count: nil,
+            series: self.content_type,
+            total_season: nil,
+            release_year: nil
+        )
+    }
+}
+
+public struct CalendarContent: Codable {
+    public let name: String?
+    public let logo: String?
+    public let banner: String?
+    public let details_banner: String?
+    public let poster: String?
 }
 
 // MARK: - Random Anime

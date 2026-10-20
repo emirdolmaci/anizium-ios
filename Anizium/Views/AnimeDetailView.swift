@@ -10,6 +10,7 @@ public struct AnimeDetailView: View {
     @State private var errorMessage: String?
     @State private var selectedSeasonIndex = 0
     @State private var playingEpisode: Episode?
+    @State private var isPlayingMovie = false
     @State private var isSavedInWatchlist = false
 
     // Comments State
@@ -129,7 +130,22 @@ public struct AnimeDetailView: View {
 
                         // Action Buttons: İzle & Listeme Ekle
                         HStack(spacing: 12) {
-                            if let firstEp = anime.seasons?.first?.episodes?.first {
+                            if anime.type == "movie" || anime.seasons == nil || anime.seasons?.isEmpty == true {
+                                Button(action: {
+                                    isPlayingMovie = true
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "play.fill")
+                                        Text("Filmi Oynat")
+                                    }
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                                }
+                            } else if let firstEp = anime.seasons?.first?.episodes?.first {
                                 Button(action: {
                                     playingEpisode = firstEp
                                 }) {
@@ -326,7 +342,17 @@ public struct AnimeDetailView: View {
                     animeId: anime.ID,
                     seasonNumber: (anime.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1,
                     episode: ep,
-                    animeTitle: anime.name ?? ""
+                    animeTitle: anime.name ?? "",
+                    isMovie: false
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $isPlayingMovie) {
+            if let anime = detail {
+                PlayerView(
+                    animeId: anime.ID,
+                    animeTitle: anime.name ?? "",
+                    isMovie: true
                 )
             }
         }

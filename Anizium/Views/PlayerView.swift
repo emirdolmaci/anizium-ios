@@ -6,12 +6,27 @@ import Combine
 
 public struct PlayerView: View {
     public let animeId: String
-    public let seasonNumber: Int
-    public let episode: Episode
+    public let seasonNumber: Int?
+    public let episode: Episode?
     public let animeTitle: String
+    public let isMovie: Bool
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var api = AniziumAPI.shared
+
+    public init(
+        animeId: String,
+        seasonNumber: Int? = nil,
+        episode: Episode? = nil,
+        animeTitle: String,
+        isMovie: Bool = false
+    ) {
+        self.animeId = animeId
+        self.seasonNumber = seasonNumber
+        self.episode = episode
+        self.animeTitle = animeTitle
+        self.isMovie = isMovie
+    }
 
     @State private var player: AVPlayer?
     @State private var timeObserver: Any?
@@ -167,6 +182,8 @@ public struct PlayerView: View {
             }
         }
         .onAppear {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try? AVAudioSession.sharedInstance().setActive(true)
             loadSource()
         }
         .onDisappear {
@@ -180,11 +197,16 @@ public struct PlayerView: View {
         errorMessage = nil
         Task {
             do {
-                let res = try await api.fetchSource(
-                    id: animeId,
-                    season: seasonNumber,
-                    episode: episode.episodeNumber
-                )
+                let res: SourceResponse
+                if isMovie || episode == nil {
+                    res = try await api.fetchMovieSource(id: animeId)
+                } else {
+                    res = try await api.fetchSource(
+                        id: animeId,
+                        season: seasonNumber ?? 1,
+                        episode: episode?.episodeNumber ?? 1
+                    )
+                }
                 await MainActor.run {
                     self.sourceResponse = res
                     setupPlayback(with: res)
@@ -206,11 +228,13 @@ public struct PlayerView: View {
         }
 
         self.availableStreams = items.sorted { $0.qualityInt > $1.qualityInt }
-        // Default to 1080p or best available
-        let best = items.first(where: { $0.qualityInt == 1080 }) ?? items.first!
+        // Default to 1080p, 720p or best available
+        let best = items.first(where: { $0.qualityInt == 1080 })
+            ?? items.first(where: { $0.qualityInt == 720 })
+            ?? items.first!
         self.selectedStream = best
 
-        if let firstSub = res.subtitles?.first {
+        if let firstSub = res.subtitles?.first(where: { $0.group == "tr" }) ?? res.subtitles?.first {
             self.selectedSubtitle = firstSub
             loadSubtitles(from: firstSub.link)
         }

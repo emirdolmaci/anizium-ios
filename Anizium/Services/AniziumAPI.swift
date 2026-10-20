@@ -21,7 +21,8 @@ public enum APIError: Error, LocalizedError {
 
 public final class AniziumAPI: ObservableObject {
     public static let shared = AniziumAPI()
-    private let baseURL = "https://api.anizium.online"
+    private let baseURL = "https://api.anizium.co"
+    private let fallbackBaseURL = "https://api.anizium.online"
     private let session: URLSession
 
     public init() {
@@ -68,6 +69,28 @@ public final class AniziumAPI: ObservableObject {
         return hexString
     }
 
+    /// Client payload encryptor: XOR with CLIENT_KEY wrapped in { "d": hex }
+    public func encryptBody(_ dict: [String: Any]) -> Data? {
+        var mutable = dict
+        mutable["date"] = Int64(Date().timeIntervalSince1970 * 1000)
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: mutable),
+              let jsonStr = String(data: jsonData, encoding: .utf8),
+              let jsonBytes = jsonStr.data(using: .utf8),
+              let keyBytes = "16ghkdz5qnwinkyebwopbd94b49xhs".data(using: .utf8) else {
+            return nil
+        }
+        let keyArray = [UInt8](keyBytes)
+        let payloadArray = [UInt8](jsonBytes)
+        var hexString = ""
+        for (index, byte) in payloadArray.enumerated() {
+            let keyByte = keyArray[index % keyArray.count]
+            let xorVal = byte ^ keyByte
+            hexString += String(format: "%02x", xorVal)
+        }
+        let wrapper = ["d": hexString]
+        return try? JSONSerialization.data(withJSONObject: wrapper)
+    }
+
     private func createRequest(path: String, method: String = "GET", queryItems: [URLQueryItem]? = nil, body: Data? = nil) -> URLRequest? {
         guard var components = URLComponents(string: "\(baseURL)/\(path)") else {
             return nil
@@ -83,9 +106,15 @@ public final class AniziumAPI: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Anizium/2.1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue(generateCfControl(), forHTTPHeaderField: "Cf-Control")
+        request.setValue("browser", forHTTPHeaderField: "device")
+        request.setValue("tr", forHTTPHeaderField: "language")
+        request.setValue("main", forHTTPHeaderField: "site")
 
         if let userSession = UserDefaults.standard.string(forKey: "user_session"), !userSession.isEmpty {
             request.setValue(userSession, forHTTPHeaderField: "user-session")
+        }
+        if let userProfile = UserDefaults.standard.string(forKey: "active_profile_id"), !userProfile.isEmpty {
+            request.setValue(userProfile, forHTTPHeaderField: "user-profile")
         }
         request.httpBody = body
         return request
@@ -94,8 +123,8 @@ public final class AniziumAPI: ObservableObject {
     // MARK: - Authentication
     public func login(value: String, password: String) async throws -> LoginResponse {
         let bodyDict = ["value": value, "password": password]
-        let bodyData = try JSONSerialization.data(withJSONObject: bodyDict)
-        guard let request = createRequest(path: "user/login", method: "POST", body: bodyData) else {
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/login", method: "POST", body: encryptedBody) else {
             throw APIError.invalidURL
         }
         let (data, response) = try await session.data(for: request)
@@ -111,8 +140,8 @@ public final class AniziumAPI: ObservableObject {
 
     public func register(username: String, email: String, password: String) async throws -> LoginResponse {
         let bodyDict = ["username": username, "email": email, "password": password]
-        let bodyData = try JSONSerialization.data(withJSONObject: bodyDict)
-        guard let request = createRequest(path: "user/register", method: "POST", body: bodyData) else {
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/register", method: "POST", body: encryptedBody) else {
             throw APIError.invalidURL
         }
         let (data, response) = try await session.data(for: request)
@@ -148,12 +177,7 @@ public final class AniziumAPI: ObservableObject {
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw APIError.serverError(http.statusCode)
         }
-        do {
-            return try JSONDecoder().decode(HomeResponse.self, from: data)
-        } catch {
-            print("Home decode error: \(error)")
-            throw APIError.decodingError(error)
-        }
+        return try JSONDecoder().decode(HomeResponse.self, from: data)
     }
 
     public func fetchAnimeDetail(id: String) async throws -> AnimeDetail {
@@ -170,12 +194,15 @@ public final class AniziumAPI: ObservableObject {
         return detail
     }
 
-    public func fetchSource(id: String, season: Int, episode: Int) async throws -> SourceResponse {
-        let query = [
+    public func fetchSource(id: String, season: Int?, episode: Int?, server: Int = 1) async throws -> SourceResponse {
+        var query = [
             URLQueryItem(name: "id", value: id),
-            URLQueryItem(name: "season", value: "\(season)"),
-            URLQueryItem(name: "episode", value: "\(episode)")
+            URLQueryItem(name: "server", value: "\(server)")
         ]
+        if let s = season, let e = episode {
+            query.append(URLQueryItem(name: "season", value: "\(s)"))
+            query.append(URLQueryItem(name: "episode", value: "\(e)"))
+        }
         guard let request = createRequest(path: "anime/source", queryItems: query) else {
             throw APIError.invalidURL
         }
@@ -183,7 +210,15 @@ public final class AniziumAPI: ObservableObject {
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw APIError.serverError(http.statusCode)
         }
-        return try JSONDecoder().decode(SourceResponse.self, from: data)
+        let parsed = try JSONDecoder().decode(SourceResponse.self, from: data)
+        if (parsed.groups == nil || parsed.groups?.isEmpty == true) && server == 1 {
+            return (try? await fetchSource(id: id, season: season, episode: episode, server: 2)) ?? parsed
+        }
+        return parsed
+    }
+
+    public func fetchMovieSource(id: String) async throws -> SourceResponse {
+        return try await fetchSource(id: id, season: nil, episode: nil, server: 1)
     }
 
     public func search(query: String, page: Int = 1) async throws -> [AnimeCard] {
@@ -256,8 +291,8 @@ public final class AniziumAPI: ObservableObject {
             "message": message,
             "spoiler": spoiler
         ]
-        let bodyData = try JSONSerialization.data(withJSONObject: bodyDict)
-        guard let request = createRequest(path: "comment/send", method: "POST", body: bodyData) else {
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "comment/send", method: "POST", body: encryptedBody) else {
             throw APIError.invalidURL
         }
         let (_, response) = try await session.data(for: request)
