@@ -292,6 +292,30 @@ public struct HomeView: View {
                 self.keepWatchingList = kw
                 self.isLoading = false
             }
+
+            // High-speed parallel prefetch for immediate poster & banner display
+            var urlsToPrefetch: [URL] = []
+            if let top = res.settlement_top {
+                for item in top {
+                    if let link = item.slider_image ?? item.poster, let u = URL(string: link) {
+                        urlsToPrefetch.append(u)
+                    }
+                }
+            }
+            if let groups = res.settlement_group {
+                for g in groups {
+                    if let items = g.items {
+                        for item in items {
+                            if let link = item.posterURLString, let u = URL(string: link) {
+                                urlsToPrefetch.append(u)
+                            }
+                        }
+                    }
+                }
+            }
+            if !urlsToPrefetch.isEmpty {
+                ImageCacheService.shared.prefetchImages(urlsToPrefetch)
+            }
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription

@@ -59,6 +59,9 @@ public struct PlayerView: View {
     @State private var isPlaying = false
     @State private var showControls = true
     @State private var controlsTimer: Timer?
+    @State private var isScreenLocked = false
+    @State private var showUnlockHint = false
+    @State private var unlockHintTimer: Timer?
     @State private var lastSavedSecond: Int = 0
 
     // Skip Intro & Next Episode state
@@ -113,9 +116,21 @@ public struct PlayerView: View {
                 CustomVideoPlayer(player: player)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation {
-                            showControls.toggle()
-                            if showControls { resetControlsTimer() }
+                        if isScreenLocked {
+                            withAnimation {
+                                showUnlockHint.toggle()
+                                if showUnlockHint {
+                                    unlockHintTimer?.invalidate()
+                                    unlockHintTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+                                        withAnimation { self.showUnlockHint = false }
+                                    }
+                                }
+                            }
+                        } else {
+                            withAnimation {
+                                showControls.toggle()
+                                if showControls { resetControlsTimer() }
+                            }
                         }
                     }
 
@@ -188,7 +203,7 @@ public struct PlayerView: View {
                 }
 
                 // Player Controls Overlay
-                if showControls {
+                if showControls && !isScreenLocked {
                     PlayerControlsOverlay(
                         title: episode != nil ? "\(animeTitle) - \(episode!.episodeNumber). Bölüm" : animeTitle,
                         isPlaying: $isPlaying,
@@ -208,8 +223,61 @@ public struct PlayerView: View {
                         onSelectSpeed: setPlaybackSpeed,
                         onSelectSubtitle: switchSubtitle,
                         onOpenSubtitleSettings: { showSubtitleSettings = true },
+                        onLockScreen: {
+                            withAnimation {
+                                isScreenLocked = true
+                                showControls = false
+                                showUnlockHint = true
+                                unlockHintTimer?.invalidate()
+                                unlockHintTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+                                    withAnimation { self.showUnlockHint = false }
+                                }
+                            }
+                        },
+                        onTapBackground: {
+                            withAnimation {
+                                showControls = false
+                            }
+                        },
                         onClose: { dismiss() }
                     )
+                    .transition(.opacity)
+                }
+
+                // Screen Lock Floating Unlock Button
+                if isScreenLocked && showUnlockHint {
+                    VStack {
+                        Spacer()
+                        Button(action: {
+                            withAnimation {
+                                isScreenLocked = false
+                                showUnlockHint = false
+                                showControls = true
+                                resetControlsTimer()
+                            }
+                            #if os(iOS)
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            #endif
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "lock.open.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Ekran Kilidini Aç")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 12)
+                            .background(Color.black.opacity(0.85))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(Color.red, lineWidth: 1.5)
+                            )
+                            .cornerRadius(24)
+                            .shadow(color: .red.opacity(0.5), radius: 10)
+                        }
+                        .padding(.bottom, 36)
+                    }
                     .transition(.opacity)
                 }
 
@@ -590,6 +658,8 @@ struct PlayerControlsOverlay: View {
     let onSelectSpeed: (Float) -> Void
     let onSelectSubtitle: (SubtitleItem?) -> Void
     let onOpenSubtitleSettings: () -> Void
+    let onLockScreen: () -> Void
+    let onTapBackground: () -> Void
     let onClose: () -> Void
 
     private func qualityTitle(for stream: StreamItem) -> String {
@@ -606,6 +676,10 @@ struct PlayerControlsOverlay: View {
     var body: some View {
         ZStack {
             Color.black.opacity(0.45).ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onTapBackground()
+                }
 
             VStack {
                 // Top Header
@@ -625,6 +699,21 @@ struct PlayerControlsOverlay: View {
                         .lineLimit(1)
 
                     Spacer()
+
+                    // Screen Lock Button
+                    Button(action: onLockScreen) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11))
+                            Text("Kilitle")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(5)
+                    }
 
                     // Audio Dub Selector Menu
                     if availableGroups.count > 1 {

@@ -28,6 +28,7 @@
 		A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000152D66000100000015 /* ProfileSelectionView.swift */; };
 		A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000162D66000100000016 /* AnimatedGIFView.swift */; };
 		A10000172D66000100000017 /* AvatarPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000172D66000100000017 /* AvatarPickerView.swift */; };
+		A10000182D66000100000018 /* SplashIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000182D66000100000018 /* SplashIntroView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 		A20000152D66000100000015 /* ProfileSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelectionView.swift; sourceTree = "<group>"; };
 		A20000162D66000100000016 /* AnimatedGIFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFView.swift; sourceTree = "<group>"; };
 		A20000172D66000100000017 /* AvatarPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarPickerView.swift; sourceTree = "<group>"; };
+		A20000182D66000100000018 /* SplashIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashIntroView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +134,7 @@
 				A20000052D66000100000005 /* HeroCarouselView.swift */,
 				A20000162D66000100000016 /* AnimatedGIFView.swift */,
 				A20000172D66000100000017 /* AvatarPickerView.swift */,
+				A20000182D66000100000018 /* SplashIntroView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 				A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */,
 				A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */,
 				A10000172D66000100000017 /* AvatarPickerView.swift in Sources */,
+				A10000182D66000100000018 /* SplashIntroView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

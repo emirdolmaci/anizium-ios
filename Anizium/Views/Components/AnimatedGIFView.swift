@@ -48,7 +48,7 @@ public final class GIFImageCache {
         }
     }
 
-    private func decodeData(_ data: Data) -> DecodedAnimation? {
+    public func decodeData(_ data: Data) -> DecodedAnimation? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
             if let img = UIImage(data: data) {
                 return DecodedAnimation(frames: [img], duration: 0, isAnimated: false)
@@ -71,7 +71,7 @@ public final class GIFImageCache {
             guard let cgImage = CGImageSourceCreateImageAtIndex(source, i, nil) else { continue }
             images.append(UIImage(cgImage: cgImage))
 
-            var frameDuration: Double = 0.1
+            var frameDuration: Double = 0.03
             if let properties = CGImageSourceCopyPropertiesAtIndex(source, i, nil) as? [CFString: Any] {
                 if let gifProps = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any] {
                     if let delay = gifProps[kCGImagePropertyGIFUnclampedDelayTime] as? Double, delay > 0.01 {
@@ -93,17 +93,35 @@ public final class GIFImageCache {
             totalDuration += frameDuration
         }
 
-        let finalDuration = totalDuration > 0.0 ? totalDuration : Double(images.count) * 0.1
+        let finalDuration = totalDuration > 0.0 ? totalDuration : Double(images.count) * 0.03
         return DecodedAnimation(frames: images, duration: finalDuration, isAnimated: images.count > 1)
     }
 }
 
 public struct AnimatedGIFView: UIViewRepresentable {
     public let url: URL?
+    public let directData: Data?
     public let contentMode: UIView.ContentMode
 
     public init(url: URL?, contentMode: UIView.ContentMode = .scaleAspectFill) {
         self.url = url
+        self.directData = nil
+        self.contentMode = contentMode
+    }
+
+    public init(data: Data?, contentMode: UIView.ContentMode = .scaleAspectFill) {
+        self.url = nil
+        self.directData = data
+        self.contentMode = contentMode
+    }
+
+    public init(assetName: String, contentMode: UIView.ContentMode = .scaleAspectFill) {
+        self.url = nil
+        if let asset = NSDataAsset(name: assetName) {
+            self.directData = asset.data
+        } else {
+            self.directData = nil
+        }
         self.contentMode = contentMode
     }
 
@@ -118,6 +136,13 @@ public struct AnimatedGIFView: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: UIImageView, context: Context) {
+        if let data = directData {
+            if let anim = GIFImageCache.shared.decodeData(data) {
+                apply(anim, to: uiView)
+            }
+            return
+        }
+
         guard let url = url else {
             uiView.stopAnimating()
             uiView.animationImages = nil

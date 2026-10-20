@@ -7,17 +7,24 @@ public final class ImageCacheService {
     private let session: URLSession
 
     private init() {
-        cache.totalCostLimit = 150 * 1024 * 1024 // 150 MB memory cache
-        cache.countLimit = 400
+        cache.totalCostLimit = 250 * 1024 * 1024 // 250 MB RAM cache
+        cache.countLimit = 600
 
         let config = URLSessionConfiguration.default
         config.urlCache = URLCache(
-            memoryCapacity: 150 * 1024 * 1024,
-            diskCapacity: 600 * 1024 * 1024,
+            memoryCapacity: 250 * 1024 * 1024,
+            diskCapacity: 800 * 1024 * 1024,
             diskPath: "anizium_disk_cache"
         )
         config.requestCachePolicy = .returnCacheDataElseLoad
+        config.httpMaximumConnectionsPerHost = 24
+        config.timeoutIntervalForRequest = 12
+        config.timeoutIntervalForResource = 35
         self.session = URLSession(configuration: config)
+    }
+
+    public func getFromMemory(for url: URL) -> UIImage? {
+        return cache.object(forKey: url as NSURL)
     }
 
     public func loadImage(from url: URL, targetSize: CGSize? = nil) async -> UIImage? {
@@ -41,6 +48,19 @@ public final class ImageCacheService {
             return downsampled
         } catch {
             return nil
+        }
+    }
+
+    public func prefetchImages(_ urls: [URL], targetSize: CGSize? = nil) {
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            await withTaskGroup(of: Void.self) { group in
+                for url in urls.prefix(30) {
+                    group.addTask {
+                        _ = await self.loadImage(from: url, targetSize: targetSize)
+                    }
+                }
+            }
         }
     }
 
@@ -88,6 +108,9 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         self.targetSize = targetSize
         self.content = content
         self.placeholder = placeholder
+        if let u = url, let cached = ImageCacheService.shared.getFromMemory(for: u) {
+            self._image = State(initialValue: cached)
+        }
     }
 
     public var body: some View {
@@ -98,6 +121,10 @@ public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                 placeholder()
                     .task(id: url) {
                         guard let url = url else { return }
+                        if let cached = ImageCacheService.shared.getFromMemory(for: url) {
+                            self.image = cached
+                            return
+                        }
                         let loaded = await ImageCacheService.shared.loadImage(from: url, targetSize: targetSize)
                         if !Task.isCancelled {
                             self.image = loaded
