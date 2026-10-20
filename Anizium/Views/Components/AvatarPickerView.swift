@@ -20,7 +20,7 @@ public struct AvatarPickerView: View {
     @State private var searchTask: Task<Void, Never>?
 
     private let columns = [
-        GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 14)
+        GridItem(.adaptive(minimum: 76, maximum: 96), spacing: 14)
     ]
 
     public init(profileId: String, onAvatarSelected: @escaping () -> Void = {}) {
@@ -29,72 +29,73 @@ public struct AvatarPickerView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(hex: "0E0E10").ignoresSafeArea()
+        ZStack {
+            Color(hex: "0E0E10").ignoresSafeArea()
 
-                VStack(spacing: 12) {
-                    // Search bar
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.white.opacity(0.4))
-                        TextField("Anime veya karakter ara (Örn: Titan, Luffy)...", text: $searchText)
+            VStack(spacing: 12) {
+                // Search bar
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.white.opacity(0.4))
+                    TextField("Anime veya karakter ara (Örn: Titan, Luffy)...", text: $searchText)
+                        .font(.system(size: 13))
+                        .foregroundColor(.white)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .onChange(of: searchText) { val in
+                            debounceSearch(query: val)
+                        }
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                            loadInitialAvatars()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                    }
+                }
+                .padding(10)
+                .background(Color(hex: "1F1F24"))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+
+                // Type filter picker (GIF / Statik)
+                Picker("Tür", selection: $filterMode) {
+                    Text("Tümü").tag(0)
+                    Text("GIF (Hareketli)").tag(1)
+                    Text("Normal (Statik)").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+
+                if isLoading && groups.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        ProgressView().tint(.red)
+                        Text("Animasyonlu avatarlar yükleniyor...")
                             .font(.system(size: 13))
-                            .foregroundColor(.white)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            .onChange(of: searchText) { val in
-                                debounceSearch(query: val)
-                            }
-                        if !searchText.isEmpty {
-                            Button(action: {
-                                searchText = ""
-                                loadInitialAvatars()
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.white.opacity(0.4))
-                            }
-                        }
+                            .foregroundColor(.white.opacity(0.6))
                     }
-                    .padding(10)
-                    .background(Color(hex: "1F1F24"))
-                    .cornerRadius(10)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
-
-                    // Type filter picker (GIF / Statik)
-                    Picker("Tür", selection: $filterMode) {
-                        Text("Tümü").tag(0)
-                        Text("GIF (Hareketli)").tag(1)
-                        Text("Normal (Statik)").tag(2)
+                    Spacer()
+                } else if groups.isEmpty {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.system(size: 32))
+                            .foregroundColor(.white.opacity(0.3))
+                        Text("Avatar bulunamadı.")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.6))
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
-
-                    if isLoading && groups.isEmpty {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            ProgressView().tint(.red)
-                            Text("Animasyonlu avatarlar yükleniyor...")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                        Spacer()
-                    } else if groups.isEmpty {
-                        Spacer()
-                        VStack(spacing: 8) {
-                            Image(systemName: "photo.badge.exclamationmark")
-                                .font(.system(size: 32))
-                                .foregroundColor(.white.opacity(0.3))
-                            Text("Avatar bulunamadı.")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                        Spacer()
-                    } else {
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 22) {
-                                ForEach(groups) { group in
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 22) {
+                            ForEach(groups) { group in
+                                let filtered = filterAvatars(group.avatar)
+                                if !filtered.isEmpty {
                                     VStack(alignment: .leading, spacing: 10) {
                                         // Group title / Logo
                                         HStack(spacing: 8) {
@@ -102,12 +103,12 @@ public struct AvatarPickerView: View {
                                                 CachedAsyncImage(url: url, targetSize: CGSize(width: 240, height: 80)) { img in
                                                     img.resizable().scaledToFit().frame(maxHeight: 28)
                                                 } placeholder: {
-                                                    Text(group.name)
+                                                    Text(group.name ?? "Anime")
                                                         .font(.system(size: 16, weight: .bold))
                                                         .foregroundColor(.white)
                                                 }
                                             } else {
-                                                Text(group.name)
+                                                Text(group.name ?? "Anime")
                                                     .font(.system(size: 16, weight: .bold))
                                                     .foregroundColor(.white)
                                             }
@@ -116,100 +117,110 @@ public struct AvatarPickerView: View {
                                         .padding(.horizontal, 16)
 
                                         // Avatars grid
-                                        let filtered = filterAvatars(group.avatar)
-                                        if !filtered.isEmpty {
-                                            LazyVGrid(columns: columns, spacing: 14) {
-                                                ForEach(filtered) { item in
-                                                    Button(action: { selectAvatar(item) }) {
-                                                        VStack(spacing: 6) {
-                                                            ZStack(alignment: .topTrailing) {
-                                                                if let link = item.link, let url = URL(string: link) {
-                                                                    AnimatedGIFView(url: url)
-                                                                        .frame(width: 72, height: 72)
-                                                                        .cornerRadius(12)
-                                                                        .clipped()
-                                                                } else {
-                                                                    Rectangle()
-                                                                        .fill(Color(hex: "1F1F24"))
-                                                                        .frame(width: 72, height: 72)
-                                                                        .cornerRadius(12)
-                                                                }
-
-                                                                if item.link?.lowercased().hasSuffix(".gif") == true {
-                                                                    Text("GIF")
-                                                                        .font(.system(size: 8, weight: .black))
-                                                                        .foregroundColor(.white)
-                                                                        .padding(.horizontal, 4)
-                                                                        .padding(.vertical, 2)
-                                                                        .background(Color.black.opacity(0.75))
-                                                                        .cornerRadius(4)
-                                                                        .padding(4)
-                                                                }
-
-                                                                if selectedAvatarId == item.id && isSetting {
-                                                                    Color.black.opacity(0.6)
-                                                                        .cornerRadius(12)
-                                                                    ProgressView().tint(.white)
-                                                                }
+                                        LazyVGrid(columns: columns, spacing: 14) {
+                                            ForEach(filtered) { item in
+                                                Button(action: { selectAvatar(item) }) {
+                                                    VStack(spacing: 6) {
+                                                        ZStack(alignment: .topTrailing) {
+                                                            if let link = item.link, let url = URL(string: link) {
+                                                                AnimatedGIFView(url: url)
+                                                                    .frame(width: 76, height: 76)
+                                                                    .cornerRadius(12)
+                                                                    .clipped()
+                                                            } else {
+                                                                Rectangle()
+                                                                    .fill(Color(hex: "1F1F24"))
+                                                                    .frame(width: 76, height: 76)
+                                                                    .cornerRadius(12)
                                                             }
-                                                            .overlay(
-                                                                RoundedRectangle(cornerRadius: 12)
-                                                                    .stroke(selectedAvatarId == item.id ? Color.red : Color.white.opacity(0.1), lineWidth: selectedAvatarId == item.id ? 2.5 : 1)
-                                                            )
 
-                                                            if let name = item.name, !name.isEmpty {
-                                                                Text(name)
-                                                                    .font(.system(size: 11, weight: .medium))
-                                                                    .foregroundColor(.white.opacity(0.8))
-                                                                    .lineLimit(1)
-                                                                    .frame(width: 72)
+                                                            if isItemGif(item) {
+                                                                Text("GIF")
+                                                                    .font(.system(size: 8, weight: .black))
+                                                                    .foregroundColor(.white)
+                                                                    .padding(.horizontal, 4)
+                                                                    .padding(.vertical, 2)
+                                                                    .background(Color.black.opacity(0.75))
+                                                                    .cornerRadius(4)
+                                                                    .padding(4)
+                                                            }
+
+                                                            if selectedAvatarId == item.id && isSetting {
+                                                                Color.black.opacity(0.6)
+                                                                    .cornerRadius(12)
+                                                                ProgressView().tint(.white)
                                                             }
                                                         }
-                                                    }
-                                                    .buttonStyle(ScaleButtonStyle())
-                                                }
-                                            }
-                                            .padding(.horizontal, 16)
-                                        }
-                                    }
-                                }
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 12)
+                                                                .stroke(selectedAvatarId == item.id ? Color.red : Color.white.opacity(0.12), lineWidth: selectedAvatarId == item.id ? 2.5 : 1)
+                                                        )
 
-                                if hasNextPage && searchText.isEmpty {
-                                    HStack {
-                                        Spacer()
-                                        ProgressView().tint(.red)
-                                            .onAppear {
-                                                loadNextPage()
+                                                        if let name = item.name, !name.isEmpty {
+                                                            Text(name)
+                                                                .font(.system(size: 11, weight: .medium))
+                                                                .foregroundColor(.white.opacity(0.85))
+                                                                .lineLimit(1)
+                                                                .frame(width: 76)
+                                                        }
+                                                    }
+                                                }
+                                                .buttonStyle(ScaleButtonStyle())
                                             }
-                                        Spacer()
+                                        }
+                                        .padding(.horizontal, 16)
                                     }
-                                    .padding(.vertical, 16)
                                 }
                             }
-                            .padding(.vertical, 8)
+
+                            if hasNextPage && searchText.isEmpty {
+                                HStack {
+                                    Spacer()
+                                    ProgressView().tint(.red)
+                                        .onAppear {
+                                            loadNextPage()
+                                        }
+                                    Spacer()
+                                }
+                                .padding(.vertical, 16)
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
                 }
-            }
-            .navigationTitle("Avatar Seç")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Avatarı Kaldır") {
-                        removeAvatar()
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.red)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Kapat") { dismiss() }
-                        .foregroundColor(.white)
-                }
-            }
-            .onAppear {
-                loadInitialAvatars()
             }
         }
+        .navigationTitle("Avatar Seç")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Avatarı Kaldır") {
+                    removeAvatar()
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.red)
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Kapat") { dismiss() }
+                    .foregroundColor(.white)
+            }
+        }
+        .alert("Bilgi", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("Tamam", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .onAppear {
+            loadInitialAvatars()
+        }
+    }
+
+    private func isItemGif(_ item: AvatarItem) -> Bool {
+        return (item.link?.lowercased().hasSuffix(".gif") == true) ||
+               (item.avatar_set?.lowercased().hasSuffix(".gif") == true)
     }
 
     private func loadInitialAvatars() {
@@ -282,13 +293,18 @@ public struct AvatarPickerView: View {
     }
 
     private func selectAvatar(_ item: AvatarItem) {
-        guard let avatarSet = item.avatar_set, !isSetting else { return }
+        guard let avatarSet = item.avatar_set, !avatarSet.isEmpty, !isSetting else { return }
+        let targetId = profileId.isEmpty ? (auth.activeProfile?.ID ?? auth.activeProfile?.id ?? "") : profileId
+        guard !targetId.isEmpty else {
+            self.errorMessage = "Aktif profil bulunamadı."
+            return
+        }
         selectedAvatarId = item.id
         isSetting = true
 
         Task {
             do {
-                try await api.setProfileAvatar(id: profileId, avatarSet: avatarSet)
+                try await api.setProfileAvatar(id: targetId, avatarSet: avatarSet)
                 await auth.fetchUserDetails()
                 await MainActor.run {
                     self.isSetting = false
@@ -308,20 +324,21 @@ public struct AvatarPickerView: View {
         guard let list = list else { return [] }
         switch filterMode {
         case 1:
-            return list.filter { $0.link?.lowercased().hasSuffix(".gif") == true }
+            return list.filter { isItemGif($0) }
         case 2:
-            return list.filter { $0.link?.lowercased().hasSuffix(".gif") == false }
+            return list.filter { !isItemGif($0) }
         default:
             return list
         }
     }
 
     private func removeAvatar() {
-        guard !isSetting else { return }
+        let targetId = profileId.isEmpty ? (auth.activeProfile?.ID ?? auth.activeProfile?.id ?? "") : profileId
+        guard !targetId.isEmpty, !isSetting else { return }
         isSetting = true
         Task {
             do {
-                try await api.setProfileAvatar(id: profileId, avatarSet: "delete")
+                try await api.setProfileAvatar(id: targetId, avatarSet: "delete")
                 await auth.fetchUserDetails()
                 await MainActor.run {
                     self.isSetting = false

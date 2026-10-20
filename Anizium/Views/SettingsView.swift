@@ -9,6 +9,7 @@ public struct SettingsView: View {
     @State private var showLoginSheet = false
     @State private var showPremiumPlansSheet = false
     @State private var showProfileSelection = false
+    @State private var showAvatarPicker = false
     @State private var showLogoutConfirm = false
     @State private var cacheCleared = false
 
@@ -24,23 +25,37 @@ public struct SettingsView: View {
                     Section(header: Text("HESAP").foregroundColor(.white.opacity(0.5))) {
                         if auth.isLoggedIn {
                             HStack(spacing: 14) {
-                                // User Avatar
-                                if let avatarUrlStr = auth.activeProfile?.displayAvatar,
-                                   let avatarUrl = URL(string: avatarUrlStr) {
-                                    AnimatedGIFView(url: avatarUrl)
-                                        .frame(width: 52, height: 52)
-                                        .clipShape(Circle())
-                                        .overlay(Circle().stroke(auth.currentUser?.isPremium == true ? Color.yellow : Color.red, lineWidth: 2))
-                                } else {
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 52, height: 52)
-                                        .overlay(
-                                            Text(String((auth.activeProfile?.name ?? auth.currentUser?.nick ?? "U").prefix(1)).uppercased())
-                                                .font(.system(size: 22, weight: .bold))
-                                                .foregroundColor(.white)
-                                        )
+                                // User Avatar (Clickable to change)
+                                Button(action: { showAvatarPicker = true }) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        if let avatarUrlStr = auth.activeProfile?.displayAvatar,
+                                           let avatarUrl = URL(string: avatarUrlStr) {
+                                            AnimatedGIFView(url: avatarUrl)
+                                                .frame(width: 54, height: 54)
+                                                .clipShape(Circle())
+                                                .overlay(Circle().stroke(auth.currentUser?.isPremium == true ? Color.yellow : Color.red, lineWidth: 2))
+                                        } else {
+                                            Circle()
+                                                .fill(Color.red)
+                                                .frame(width: 54, height: 54)
+                                                .overlay(
+                                                    Text(String((auth.activeProfile?.name ?? auth.currentUser?.nick ?? "U").prefix(1)).uppercased())
+                                                        .font(.system(size: 22, weight: .bold))
+                                                        .foregroundColor(.white)
+                                                )
+                                        }
+
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 20, height: 20)
+                                            .overlay(
+                                                Image(systemName: "pencil")
+                                                    .font(.system(size: 9, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            )
+                                    }
                                 }
+                                .buttonStyle(PlainButtonStyle())
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack(spacing: 8) {
@@ -77,6 +92,28 @@ public struct SettingsView: View {
                                 }
                             }
                             .padding(.vertical, 6)
+
+                            // Direct Avatar Changer
+                            Button(action: {
+                                showAvatarPicker = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "photo.circle.fill")
+                                        .foregroundColor(.red)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Avatarı Değiştir (GIF / Resim)")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.white)
+                                        Text("Anizium avatar galerisinden hareketli GIF veya görsel seç")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.white.opacity(0.5))
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.3))
+                                }
+                            }
 
                             // Profile switcher & manager
                             Button(action: {
@@ -247,6 +284,13 @@ public struct SettingsView: View {
                     // MARK: - About
                     Section(header: Text("HAKKINDA").foregroundColor(.white.opacity(0.5))) {
                         HStack {
+                            Text("Yapan")
+                            Spacer()
+                            Text("Emir DOLMACI")
+                                .foregroundColor(.white)
+                                .fontWeight(.bold)
+                        }
+                        HStack {
                             Text("Uygulama")
                             Spacer()
                             Text("Anizium iOS")
@@ -291,6 +335,11 @@ public struct SettingsView: View {
             }
             .sheet(isPresented: $showProfileSelection) {
                 ProfileSelectionView()
+            }
+            .sheet(isPresented: $showAvatarPicker) {
+                NavigationStack {
+                    AvatarPickerView(profileId: auth.activeProfile?.ID ?? auth.activeProfile?.id ?? "")
+                }
             }
             .alert("Çıkış Yapılsın mı?", isPresented: $showLogoutConfirm) {
                 Button("İptal", role: .cancel) {}

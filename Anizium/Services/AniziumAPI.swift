@@ -102,7 +102,7 @@ public final class AniziumAPI: ObservableObject {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.setValue("application/vnd.GitHub.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Anizium/2.1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue(generateCfControl(), forHTTPHeaderField: "Cf-Control")
@@ -447,16 +447,25 @@ public final class AniziumAPI: ObservableObject {
             "avatar_set": avatarSet
         ]
         guard let encryptedBody = encryptBody(bodyDict),
-              let request = createRequest(path: "user/profile/avatar", method: "POST", body: encryptedBody) else {
+              var request = createRequest(path: "user/profile/avatar", method: "POST", body: encryptedBody) else {
             throw APIError.invalidURL
         }
+        // Explicitly set target profile header
+        request.setValue(id, forHTTPHeaderField: "user-profile")
+
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let msg = errObj["msg"] as? String {
+               let msg = (errObj["msg"] as? String) ?? (errObj["message"] as? String) {
                 throw APIError.apiMessage(msg)
             }
             throw APIError.serverError(http.statusCode)
+        }
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let success = json["success"] as? Bool, !success {
+                let msg = (json["msg"] as? String) ?? "Avatar güncellenemedi."
+                throw APIError.apiMessage(msg)
+            }
         }
     }
 }

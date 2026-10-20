@@ -582,10 +582,18 @@ public struct AvatarPage: Codable {
 }
 
 public struct AvatarGroup: Codable, Identifiable {
-    public var id: String { name }
-    public let name: String
+    public var id: String { self.group_id ?? self.name ?? UUID().uuidString }
+    public let group_id: String?
+    public let name: String?
     public let logo: String?
     public let avatar: [AvatarItem]?
+
+    enum CodingKeys: String, CodingKey {
+        case group_id = "ID"
+        case name
+        case logo
+        case avatar
+    }
 }
 
 public struct AvatarItem: Codable, Identifiable, Hashable {

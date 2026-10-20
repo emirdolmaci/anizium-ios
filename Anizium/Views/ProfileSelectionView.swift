@@ -16,7 +16,6 @@ public struct ProfileSelectionView: View {
     @State private var editName = ""
     @State private var isSavingEdit = false
     @State private var showDeleteConfirm = false
-    @State private var showAvatarPicker = false
 
     public init() {}
 
@@ -217,43 +216,57 @@ public struct ProfileSelectionView: View {
                     ZStack {
                         Color(hex: "0E0E10").ignoresSafeArea()
                         VStack(spacing: 16) {
-                            // Avatar Preview & Change Action
+                            // Avatar Preview & Change Action (NavigationLink)
                             VStack(spacing: 8) {
-                                ZStack(alignment: .bottomTrailing) {
-                                    if let avatarUrlStr = profile.displayAvatar, let url = URL(string: avatarUrlStr) {
-                                        AnimatedGIFView(url: url)
-                                            .frame(width: 86, height: 86)
-                                            .cornerRadius(18)
-                                            .clipped()
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 18)
+                                NavigationLink(destination: AvatarPickerView(profileId: profile.ID ?? profile.id) {
+                                    if let pid = profile.ID, let updated = auth.currentUser?.profiles?.first(where: { $0.ID == pid }) {
+                                        self.editingProfile = updated
+                                    }
+                                }) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        if let avatarUrlStr = profile.displayAvatar, let url = URL(string: avatarUrlStr) {
+                                            AnimatedGIFView(url: url)
+                                                .frame(width: 86, height: 86)
+                                                .cornerRadius(18)
+                                                .clipped()
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 18)
+                                                .fill(Color.red)
+                                                .frame(width: 86, height: 86)
+                                                .overlay(
+                                                    Text(String((profile.name ?? "U").prefix(1)).uppercased())
+                                                        .font(.system(size: 32, weight: .bold))
+                                                        .foregroundColor(.white)
+                                                )
+                                        }
+
+                                        Circle()
                                             .fill(Color.red)
-                                            .frame(width: 86, height: 86)
+                                            .frame(width: 28, height: 28)
                                             .overlay(
-                                                Text(String((profile.name ?? "U").prefix(1)).uppercased())
-                                                    .font(.system(size: 32, weight: .bold))
+                                                Image(systemName: "photo.badge.plus")
+                                                    .font(.system(size: 11, weight: .bold))
                                                     .foregroundColor(.white)
                                             )
+                                            .offset(x: 4, y: 4)
                                     }
-
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 28, height: 28)
-                                        .overlay(
-                                            Image(systemName: "photo.fill")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(.white)
-                                        )
-                                        .offset(x: 4, y: 4)
-                                }
-                                .onTapGesture {
-                                    showAvatarPicker = true
                                 }
 
-                                Button(action: { showAvatarPicker = true }) {
-                                    Text("Avatarı Değiştir (GIF Seç)")
-                                        .font(.system(size: 13, weight: .bold))
-                                        .foregroundColor(.red)
+                                NavigationLink(destination: AvatarPickerView(profileId: profile.ID ?? profile.id) {
+                                    if let pid = profile.ID, let updated = auth.currentUser?.profiles?.first(where: { $0.ID == pid }) {
+                                        self.editingProfile = updated
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "photo.on.rectangle.angled")
+                                        Text("Avatarı Değiştir (GIF / Resim Seç)")
+                                    }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
                                 }
                             }
                             .padding(.top, 10)
@@ -310,16 +323,7 @@ public struct ProfileSelectionView: View {
                         }
                     }
                 }
-                .presentationDetents([.height(380)])
-            }
-            .sheet(isPresented: $showAvatarPicker) {
-                if let p = editingProfile, let id = p.ID {
-                    AvatarPickerView(profileId: id) {
-                        if let updated = auth.currentUser?.profiles?.first(where: { $0.ID == id }) {
-                            self.editingProfile = updated
-                        }
-                    }
-                }
+                .presentationDetents([.medium, .large])
             }
         }
     }

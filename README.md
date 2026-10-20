@@ -232,7 +232,13 @@ Anizium-iOS/
 
 ---
 
+## 👨‍💻 Geliştirici & Yapan
+
+**Emir DOLMACI** — [@emirdolmaci](https://github.com/emirdolmaci)
+
+---
+
 ## ⚖️ Lisans
 
-Bu proje **MIT Lisansı** ile lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakabilirsiniz.  
+Bu proje **MIT Lisansı** altında **Emir DOLMACI** tarafından lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakabilirsiniz.  
 Tüm anime içerikleri, görseller ve video akış hakları [anizium.co](https://anizium.co) platformuna aittir.
