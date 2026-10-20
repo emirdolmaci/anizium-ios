@@ -297,18 +297,23 @@ public struct HomeView: View {
             var urlsToPrefetch: [URL] = []
             if let top = res.settlement_top {
                 for item in top {
-                    if let link = item.slider_image ?? item.poster, let u = URL(string: link) {
+                    if let link = item.details_banner ?? item.banner ?? item.poster, let u = URL(string: link) {
                         urlsToPrefetch.append(u)
                     }
                 }
             }
-            if let groups = res.settlement_group {
-                for g in groups {
-                    if let items = g.items {
-                        for item in items {
-                            if let link = item.posterURLString, let u = URL(string: link) {
-                                urlsToPrefetch.append(u)
-                            }
+            if let middle = res.settlement_middle {
+                for item in middle {
+                    if let link = item.poster ?? item.mobile_poster_link, let u = URL(string: link) {
+                        urlsToPrefetch.append(u)
+                    }
+                }
+            }
+            if let special = res.special_list {
+                for list in special {
+                    for item in list.data {
+                        if let link = item.posterURLString, let u = URL(string: link) {
+                            urlsToPrefetch.append(u)
                         }
                     }
                 }
