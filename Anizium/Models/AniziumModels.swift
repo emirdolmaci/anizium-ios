@@ -355,8 +355,8 @@ public struct PremiumPageResponse: Codable {
 }
 
 public struct PremiumPlanData: Codable, Identifiable {
-    public var id: String { value ?? "\(ID ?? 0)" }
-    public let ID: Int?
+    public var id: String { value ?? "\(planId ?? 0)" }
+    public let planId: Int?
     public let value: String?
     public let plan: String?
     public let active: Bool?
@@ -369,6 +369,22 @@ public struct PremiumPlanData: Codable, Identifiable {
     public let discount: PlanDiscount?
     public let advantages: [String]?
     public let alternatives: [PlanAlternative]?
+
+    enum CodingKeys: String, CodingKey {
+        case planId = "ID"
+        case value
+        case plan
+        case active
+        case name
+        case day_text
+        case day
+        case view_price
+        case price
+        case renewal_price
+        case discount
+        case advantages
+        case alternatives
+    }
 
     public var isInfinity: Bool {
         value == "infinity" || (day ?? 0) > 3650
