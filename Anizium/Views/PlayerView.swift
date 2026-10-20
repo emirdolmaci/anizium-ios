@@ -10,6 +10,7 @@ public struct PlayerView: View {
     public let episode: Episode?
     public let animeTitle: String
     public let isMovie: Bool
+    public let startTime: Double
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var api = AniziumAPI.shared
@@ -19,13 +20,15 @@ public struct PlayerView: View {
         seasonNumber: Int? = nil,
         episode: Episode? = nil,
         animeTitle: String,
-        isMovie: Bool = false
+        isMovie: Bool = false,
+        startTime: Double = 0
     ) {
         self.animeId = animeId
         self.seasonNumber = seasonNumber
         self.episode = episode
         self.animeTitle = animeTitle
         self.isMovie = isMovie
+        self.startTime = startTime
     }
 
     @State private var player: AVPlayer?
@@ -34,14 +37,21 @@ public struct PlayerView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
+    // Audio Dub Groups & Streams
+    @State private var availableGroups: [SourceGroup] = []
+    @State private var selectedGroup: SourceGroup?
     @State private var availableStreams: [StreamItem] = []
     @State private var selectedStream: StreamItem?
+
+    // Playback Speed
+    @State private var playbackRate: Float = 1.0
 
     @State private var currentTime: Double = 0
     @State private var duration: Double = 0
     @State private var isPlaying = false
     @State private var showControls = true
     @State private var controlsTimer: Timer?
+    @State private var lastSavedSecond: Int = 0
 
     // Skip Intro & Next Episode state
     @State private var showSkipIntro = false
@@ -62,7 +72,7 @@ public struct PlayerView: View {
                     ProgressView()
                         .tint(.red)
                         .scaleEffect(1.2)
-                    Text("Video kaynağı hazırlanıyor...")
+                    Text("Video ve ses kaynakları hazırlanıyor...")
                         .font(.system(size: 13))
                         .foregroundColor(.white.opacity(0.7))
                 }
@@ -74,6 +84,7 @@ public struct PlayerView: View {
                     Text(error)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                     Button("Kapat") { dismiss() }
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
@@ -167,13 +178,18 @@ public struct PlayerView: View {
                         isPlaying: $isPlaying,
                         currentTime: $currentTime,
                         duration: duration,
+                        availableGroups: availableGroups,
+                        selectedGroup: selectedGroup,
                         availableStreams: availableStreams,
                         selectedStream: selectedStream,
+                        playbackRate: playbackRate,
                         subtitles: sourceResponse?.subtitles ?? [],
                         selectedSubtitle: selectedSubtitle,
                         onPlayPause: togglePlayPause,
                         onSeek: seekTo,
+                        onSelectGroup: switchAudioGroup,
                         onSelectStream: switchQuality,
+                        onSelectSpeed: setPlaybackSpeed,
                         onSelectSubtitle: switchSubtitle,
                         onClose: { dismiss() }
                     )
@@ -187,6 +203,7 @@ public struct PlayerView: View {
             loadSource()
         }
         .onDisappear {
+            saveKeepWatchingProgress()
             cleanUpPlayer()
         }
     }
@@ -221,25 +238,40 @@ public struct PlayerView: View {
     }
 
     private func setupPlayback(with res: SourceResponse) {
-        guard let group = res.groups?.first, let items = group.items, !items.isEmpty else {
+        guard let groups = res.groups, !groups.isEmpty else {
             self.errorMessage = "Oynatılabilir video akışı bulunamadı."
             self.isLoading = false
             return
         }
 
+        self.availableGroups = groups
+
+        // Pick preferred audio group: Turkish dub if available, otherwise original Japanese
+        let defaultGroup = groups.first(where: { $0.group == "trdub" })
+            ?? groups.first(where: { $0.group == "original" })
+            ?? groups.first!
+
+        self.selectedGroup = defaultGroup
+        setupStreamsForGroup(defaultGroup, resumeAt: startTime)
+
+        // Subtitles setup (default off for Turkish dub, on for Japanese)
+        if defaultGroup.group != "trdub", let firstSub = res.subtitles?.first(where: { $0.group == "tr" }) ?? res.subtitles?.first {
+            self.selectedSubtitle = firstSub
+            loadSubtitles(from: firstSub.link)
+        }
+    }
+
+    private func setupStreamsForGroup(_ group: SourceGroup, resumeAt: Double = 0) {
+        guard let items = group.items, !items.isEmpty else { return }
         self.availableStreams = items.sorted { $0.qualityInt > $1.qualityInt }
-        // Default to 1080p, 720p or best available
+
+        // Pick matching quality: 1080p, 720p or highest available
         let best = items.first(where: { $0.qualityInt == 1080 })
             ?? items.first(where: { $0.qualityInt == 720 })
             ?? items.first!
         self.selectedStream = best
 
-        if let firstSub = res.subtitles?.first(where: { $0.group == "tr" }) ?? res.subtitles?.first {
-            self.selectedSubtitle = firstSub
-            loadSubtitles(from: firstSub.link)
-        }
-
-        initAVPlayer(urlStr: best.link)
+        initAVPlayer(urlStr: best.link, startAt: resumeAt)
     }
 
     private func initAVPlayer(urlStr: String, startAt: Double = 0) {
@@ -253,6 +285,7 @@ public struct PlayerView: View {
             p.seek(to: CMTime(seconds: startAt, preferredTimescale: 600))
         }
 
+        p.rate = playbackRate
         p.play()
         self.isPlaying = true
         resetControlsTimer()
@@ -269,7 +302,31 @@ public struct PlayerView: View {
 
             self.checkIntroAndOutro(currentTime: sec)
             self.updateSubtitle(currentTime: sec)
+
+            // Periodic Keep-Watching Sync every 10 seconds
+            let currentSecInt = Int(sec)
+            if currentSecInt > 5 && currentSecInt != self.lastSavedSecond && currentSecInt % 10 == 0 {
+                self.lastSavedSecond = currentSecInt
+                self.saveKeepWatchingProgress()
+            }
         }
+    }
+
+    private func switchAudioGroup(to group: SourceGroup) {
+        guard group.id != selectedGroup?.id else { return }
+        let currentPos = currentTime
+        selectedGroup = group
+        cleanUpPlayer()
+
+        guard let items = group.items, !items.isEmpty else { return }
+        availableStreams = items.sorted { $0.qualityInt > $1.qualityInt }
+
+        // Retain same quality if available
+        let targetQuality = selectedStream?.qualityInt ?? 1080
+        let matching = items.first(where: { $0.qualityInt == targetQuality }) ?? items.first!
+        selectedStream = matching
+
+        initAVPlayer(urlStr: matching.link, startAt: currentPos)
     }
 
     private func switchQuality(to stream: StreamItem) {
@@ -280,6 +337,13 @@ public struct PlayerView: View {
         initAVPlayer(urlStr: stream.link, startAt: currentPos)
     }
 
+    private func setPlaybackSpeed(_ speed: Float) {
+        self.playbackRate = speed
+        if isPlaying {
+            player?.rate = speed
+        }
+    }
+
     private func switchSubtitle(to sub: SubtitleItem?) {
         self.selectedSubtitle = sub
         if let sub = sub {
@@ -287,6 +351,22 @@ public struct PlayerView: View {
         } else {
             self.subtitles = []
             self.currentSubtitleText = ""
+        }
+    }
+
+    private func saveKeepWatchingProgress() {
+        guard currentTime > 5 else { return }
+        let time = currentTime
+        let id = animeId
+        let season = seasonNumber
+        let ep = episode?.episodeNumber
+        Task {
+            try? await api.saveKeepWatching(
+                id: id,
+                season: season,
+                episode: ep,
+                time: time
+            )
         }
     }
 
@@ -319,7 +399,6 @@ public struct PlayerView: View {
     }
 
     private func playNextEpisode() {
-        // Dismiss current and trigger next episode if applicable
         dismiss()
     }
 
@@ -329,6 +408,7 @@ public struct PlayerView: View {
             p.pause()
             isPlaying = false
         } else {
+            p.rate = playbackRate
             p.play()
             isPlaying = true
             resetControlsTimer()
@@ -442,7 +522,7 @@ public struct SubtitleCue {
     public let text: String
 }
 
-// Custom Player Layer to avoid default AVPlayerViewController controls
+// Custom Player Layer
 struct CustomVideoPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
 
@@ -463,29 +543,48 @@ struct PlayerControlsOverlay: View {
     @Binding var isPlaying: Bool
     @Binding var currentTime: Double
     let duration: Double
+
+    let availableGroups: [SourceGroup]
+    let selectedGroup: SourceGroup?
     let availableStreams: [StreamItem]
     let selectedStream: StreamItem?
+    let playbackRate: Float
     let subtitles: [SubtitleItem]
     let selectedSubtitle: SubtitleItem?
 
     let onPlayPause: () -> Void
     let onSeek: (Double) -> Void
+    let onSelectGroup: (SourceGroup) -> Void
     let onSelectStream: (StreamItem) -> Void
+    let onSelectSpeed: (Float) -> Void
     let onSelectSubtitle: (SubtitleItem?) -> Void
     let onClose: () -> Void
 
+    private func qualityTitle(for stream: StreamItem) -> String {
+        switch stream.qualityInt {
+        case 2160: return "4K UHD"
+        case 1440: return "2K QHD"
+        case 1080: return "1080p FHD"
+        case 720: return "720p HD"
+        case 480: return "480p SD"
+        default: return "\(stream.qualityInt)p"
+        }
+    }
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4).ignoresSafeArea()
+            Color.black.opacity(0.45).ignoresSafeArea()
 
             VStack {
                 // Top Header
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Button(action: onClose) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
                             .padding(8)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(Circle())
                     }
 
                     Text(title)
@@ -495,12 +594,40 @@ struct PlayerControlsOverlay: View {
 
                     Spacer()
 
-                    // Quality Menu
+                    // Audio Dub Selector Menu
+                    if availableGroups.count > 1 {
+                        Menu {
+                            ForEach(availableGroups) { group in
+                                Button(action: { onSelectGroup(group) }) {
+                                    HStack {
+                                        Text(group.name ?? group.group ?? "Ses")
+                                        if group.id == selectedGroup?.id {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 11))
+                                Text(selectedGroup?.name ?? "Ses")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(5)
+                        }
+                    }
+
+                    // Quality Menu (4K, 2K, 1080p, 720p, 480p)
                     Menu {
                         ForEach(availableStreams) { stream in
                             Button(action: { onSelectStream(stream) }) {
                                 HStack {
-                                    Text("\(stream.qualityInt)p")
+                                    Text(qualityTitle(for: stream))
                                     if stream.id == selectedStream?.id {
                                         Image(systemName: "checkmark")
                                     }
@@ -508,13 +635,35 @@ struct PlayerControlsOverlay: View {
                             }
                         }
                     } label: {
-                        Text("\(selectedStream?.qualityInt ?? 1080)p")
-                            .font(.system(size: 12, weight: .bold))
+                        Text(selectedStream != nil ? qualityTitle(for: selectedStream!) : "1080p")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 5)
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(5)
+                    }
+
+                    // Playback Speed Menu
+                    Menu {
+                        ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { speed in
+                            Button(action: { onSelectSpeed(Float(speed)) }) {
+                                HStack {
+                                    Text(String(format: "%.2fx", speed))
+                                    if playbackRate == Float(speed) {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Text(String(format: "%.1fx", playbackRate))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 5)
                             .background(Color.white.opacity(0.2))
-                            .cornerRadius(4)
+                            .cornerRadius(5)
                     }
 
                     // Subtitle Menu
@@ -532,9 +681,11 @@ struct PlayerControlsOverlay: View {
                         }
                     } label: {
                         Image(systemName: selectedSubtitle != nil ? "captions.bubble.fill" : "captions.bubble")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
-                            .padding(8)
+                            .font(.system(size: 15))
+                            .foregroundColor(selectedSubtitle != nil ? .yellow : .white)
+                            .padding(6)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
                     }
                 }
                 .padding(.horizontal, 16)
@@ -543,7 +694,7 @@ struct PlayerControlsOverlay: View {
                 Spacer()
 
                 // Center Play / Pause & 10s Skip
-                HStack(spacing: 40) {
+                HStack(spacing: 44) {
                     Button(action: { onSeek(max(0, currentTime - 10)) }) {
                         Image(systemName: "gobackward.10")
                             .font(.system(size: 26))
@@ -552,7 +703,7 @@ struct PlayerControlsOverlay: View {
 
                     Button(action: onPlayPause) {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 56))
+                            .font(.system(size: 58))
                             .foregroundColor(.white)
                     }
 
@@ -570,11 +721,11 @@ struct PlayerControlsOverlay: View {
                     HStack {
                         Text(formatTime(currentTime))
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.white.opacity(0.85))
                         Spacer()
                         Text(formatTime(duration))
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.white.opacity(0.85))
                     }
 
                     Slider(value: $currentTime, in: 0...max(1, duration), onEditingChanged: { editing in

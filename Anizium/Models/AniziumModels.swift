@@ -272,6 +272,17 @@ public struct UserProfileResponse: Codable {
     public let data: UserProfile?
 }
 
+public struct PremiumInfo: Codable {
+    public let created: Int64?
+    public let time: Int64?
+    public let active: Bool?
+}
+
+public struct PremiumPlan: Codable {
+    public let ID: String?
+    public let name: String?
+}
+
 public struct UserProfile: Codable, Identifiable {
     public var id: String { self.ID ?? "" }
     public let ID: String?
@@ -279,10 +290,17 @@ public struct UserProfile: Codable, Identifiable {
     public let email: String?
     public let name: String?
     public let surname: String?
-    public let profiles: [ProfileItem]?
+    public let phone: String?
     public let subscription: Bool?
-    public let premium: Bool?
+    public let premium: PremiumInfo?
+    public let premium_plan: PremiumPlan?
+    public let infinity: Bool?
     public let staff: Bool?
+    public let profiles: [ProfileItem]?
+
+    public var isPremium: Bool {
+        (premium?.active == true) || (infinity == true)
+    }
 }
 
 public struct ProfileItem: Codable, Identifiable, Hashable {
@@ -290,8 +308,59 @@ public struct ProfileItem: Codable, Identifiable, Hashable {
     public let ID: String?
     public let name: String?
     public let avatar: String?
+    public let avatar_link: String?
     public let adult: Bool?
     public let pin: Bool?
+
+    public var displayAvatar: String? {
+        avatar_link ?? avatar
+    }
+}
+
+// MARK: - Keep Watching Models
+public struct KeepWatchingResponse: Codable {
+    public let success: Bool?
+    public let data: [KeepWatchingItem]?
+}
+
+public struct KeepWatchingItem: Codable, Identifiable, Hashable {
+    public var id: String { self.ID }
+    public let ID: String
+    public let type: String?
+    public let logo: String?
+    public let banner: String?
+    public let details_banner: String?
+    public let poster: String?
+    public let name: String?
+    public let sef: String?
+    public let status: String?
+    public let run_time: StringOrNumber?
+    public let time: Double?
+    public let updated: Int64?
+    public let season: Int?
+    public let episode: Int?
+
+    public var isMovie: Bool {
+        type == "movie"
+    }
+
+    public var progress: Double {
+        guard let current = time, let totalMinutes = Double(run_time?.stringValue ?? "0"), totalMinutes > 0 else {
+            return 0
+        }
+        let totalSeconds = totalMinutes * 60.0
+        return min(max(current / totalSeconds, 0.0), 1.0)
+    }
+
+    public var displaySubtitle: String {
+        if isMovie {
+            let m = Int(time ?? 0) / 60
+            return "Film • \(m) dk"
+        } else {
+            let m = Int(time ?? 0) / 60
+            return "S\(season ?? 1) B\(episode ?? 1) • \(m) dk"
+        }
+    }
 }
 
 // MARK: - Comments Models

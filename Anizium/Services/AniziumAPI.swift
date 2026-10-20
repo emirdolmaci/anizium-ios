@@ -300,4 +300,33 @@ public final class AniziumAPI: ObservableObject {
             throw APIError.serverError(http.statusCode)
         }
     }
+
+    // MARK: - Keep Watching (Kaldığın Yerden Devam Et)
+    public func fetchKeepWatching() async throws -> [KeepWatchingItem] {
+        guard let request = createRequest(path: "page/keep-watching") else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            return []
+        }
+        let res = try JSONDecoder().decode(KeepWatchingResponse.self, from: data)
+        return res.data ?? []
+    }
+
+    public func saveKeepWatching(id: String, season: Int? = nil, episode: Int? = nil, time: Double) async throws {
+        var dict: [String: Any] = [
+            "id": id,
+            "time": Int(time)
+        ]
+        if let s = season, let e = episode {
+            dict["season"] = s
+            dict["episode"] = e
+        }
+        guard let encryptedBody = encryptBody(dict),
+              let request = createRequest(path: "anime/keep-watching/save", method: "POST", body: encryptedBody) else {
+            return
+        }
+        _ = try? await session.data(for: request)
+    }
 }

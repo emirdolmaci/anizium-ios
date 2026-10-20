@@ -22,40 +22,65 @@ public struct SettingsView: View {
                     Section(header: Text("HESAP").foregroundColor(.white.opacity(0.5))) {
                         if auth.isLoggedIn {
                             HStack(spacing: 14) {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 48, height: 48)
-                                    .overlay(
-                                        Text(String((auth.activeProfile?.name ?? auth.currentUser?.nick ?? "U").prefix(1)).uppercased())
-                                            .font(.system(size: 20, weight: .bold))
-                                            .foregroundColor(.white)
-                                    )
+                                // User Avatar
+                                if let avatarUrlStr = auth.activeProfile?.displayAvatar,
+                                   let avatarUrl = URL(string: avatarUrlStr) {
+                                    AsyncImage(url: avatarUrl) { phase in
+                                        if let img = phase.image {
+                                            img.resizable().scaledToFill()
+                                        } else {
+                                            Circle().fill(Color.red.opacity(0.8))
+                                        }
+                                    }
+                                    .frame(width: 52, height: 52)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(auth.currentUser?.isPremium == true ? Color.yellow : Color.red, lineWidth: 2))
+                                } else {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 52, height: 52)
+                                        .overlay(
+                                            Text(String((auth.activeProfile?.name ?? auth.currentUser?.nick ?? "U").prefix(1)).uppercased())
+                                                .font(.system(size: 22, weight: .bold))
+                                                .foregroundColor(.white)
+                                        )
+                                }
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(auth.activeProfile?.name ?? auth.currentUser?.nick ?? "Kullanıcı")
+                                    HStack(spacing: 8) {
+                                        Text(auth.currentUser?.name != nil ? "\(auth.currentUser!.name!) \(auth.currentUser!.surname ?? "")" : (auth.currentUser?.nick ?? "Kullanıcı"))
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
 
-                                        if auth.currentUser?.premium == true {
-                                            Text("PREMIUM")
-                                                .font(.system(size: 9, weight: .black))
-                                                .foregroundColor(.yellow)
-                                                .padding(.horizontal, 5)
-                                                .padding(.vertical, 2)
-                                                .background(Color.yellow.opacity(0.2))
-                                                .cornerRadius(4)
+                                        if auth.currentUser?.isPremium == true {
+                                            HStack(spacing: 3) {
+                                                Image(systemName: "crown.fill")
+                                                    .font(.system(size: 9))
+                                                Text("PREMIUM")
+                                                    .font(.system(size: 9, weight: .black))
+                                            }
+                                            .foregroundColor(.yellow)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.yellow.opacity(0.2))
+                                            .cornerRadius(4)
                                         }
+                                    }
+
+                                    if let nick = auth.currentUser?.nick {
+                                        Text("@\(nick)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.white.opacity(0.5))
                                     }
 
                                     if let email = auth.currentUser?.email, !email.isEmpty {
                                         Text(email)
                                             .font(.system(size: 12))
-                                            .foregroundColor(.white.opacity(0.6))
+                                            .foregroundColor(.white.opacity(0.5))
                                     }
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 6)
 
                             // Profile switcher if multiple
                             if let profiles = auth.currentUser?.profiles, profiles.count > 1 {
@@ -91,7 +116,7 @@ public struct SettingsView: View {
                                         Text("Giriş Yap / Kayıt Ol")
                                             .font(.system(size: 15, weight: .bold))
                                             .foregroundColor(.white)
-                                        Text("Yorum yapmak ve favorilerini senkronize etmek için hesabına bağlan.")
+                                        Text("Hesabına bağlan, izleme geçmişini ve favorilerini senkronize et.")
                                             .font(.system(size: 11))
                                             .foregroundColor(.white.opacity(0.6))
                                     }
@@ -102,6 +127,43 @@ public struct SettingsView: View {
                     }
                     .listRowBackground(Color(hex: "1F1F24"))
 
+                    // MARK: - Premium Subscription Card
+                    if auth.currentUser?.isPremium == true {
+                        Section(header: Text("ÜYELİK PAKETİ").foregroundColor(.white.opacity(0.5))) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Image(systemName: "sparkles")
+                                        .foregroundColor(.yellow)
+                                    Text("Standart 4K Ultra HD")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    Text("Süresiz (Infinity)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.green.opacity(0.15))
+                                        .cornerRadius(4)
+                                }
+
+                                Divider().background(Color.white.opacity(0.1))
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Label("En Yüksek 4K Ultra HD & 2K Video", systemImage: "checkmark.circle.fill")
+                                    Label("Reklamsız ve Kesintisiz Video Deneyimi", systemImage: "checkmark.circle.fill")
+                                    Label("Çoklu Dublaj ve Çoklu Altyazı Desteği", systemImage: "checkmark.circle.fill")
+                                    Label("Kaldığın Yerden Devam Et Senkronizasyonu", systemImage: "checkmark.circle.fill")
+                                    Label("4 Profil ve Eşzamanlı Cihaz Desteği", systemImage: "checkmark.circle.fill")
+                                }
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.75))
+                            }
+                            .padding(.vertical, 6)
+                        }
+                        .listRowBackground(Color(hex: "1F1F24"))
+                    }
+
                     // MARK: - Playback Settings
                     Section(header: Text("OYNATMA AYARLARI").foregroundColor(.white.opacity(0.5))) {
                         Toggle("İntroyu Otomatik Atla", isOn: $autoSkipIntro)
@@ -110,6 +172,7 @@ public struct SettingsView: View {
                             .tint(.red)
 
                         Picker("Varsayılan Çözünürlük", selection: $defaultQuality) {
+                            Text("4K UHD").tag("4K")
                             Text("1080p (FHD)").tag("1080p")
                             Text("720p (HD)").tag("720p")
                             Text("480p (SD)").tag("480p")
@@ -146,9 +209,9 @@ public struct SettingsView: View {
                                 .foregroundColor(.white.opacity(0.6))
                         }
                         HStack {
-                            Text("Platform")
+                            Text("Altyapı")
                             Spacer()
-                            Text("iOS / iPadOS Native")
+                            Text("anizium.co Official API")
                                 .foregroundColor(.white.opacity(0.6))
                         }
                     }
@@ -162,18 +225,18 @@ public struct SettingsView: View {
                 LoginSheetView()
             }
             .alert("Çıkış Yapılsın mı?", isPresented: $showLogoutConfirm) {
+                Button("İptal", role: .cancel) {}
                 Button("Çıkış Yap", role: .destructive) {
                     auth.logout()
                 }
-                Button("İptal", role: .cancel) {}
             } message: {
-                Text("Hesabınızdan çıkış yapmak istediğinize emin misiniz?")
+                Text("Hesabınızdan çıkış yaptığınızda izleme geçmişiniz ve profil senkronizasyonunuz durdurulacaktır.")
             }
         }
     }
 
     private func clearCache() {
-        URLCache.shared.removeAllCachedResponses()
+        ImageCache.shared.clear()
         cacheCleared = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             cacheCleared = false

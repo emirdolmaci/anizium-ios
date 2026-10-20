@@ -2,7 +2,10 @@ import SwiftUI
 
 public struct HomeView: View {
     @StateObject private var api = AniziumAPI.shared
+    @StateObject private var auth = AuthManager.shared
     @State private var homeData: HomeResponse?
+    @State private var keepWatchingList: [KeepWatchingItem] = []
+    @State private var playingKeepWatchingItem: KeepWatchingItem?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var selectedAnimeId: String?
@@ -51,6 +54,86 @@ public struct HomeView: View {
                             if let topItems = data.settlement_top, !topItems.isEmpty {
                                 HeroCarouselView(items: topItems) { item in
                                     selectedAnimeId = item.ID
+                                }
+                            }
+
+                            // Keep Watching Row (Kaldığın Yerden Devam Et)
+                            if !keepWatchingList.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text("Kaldığın Yerden Devam Et")
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        LazyHStack(spacing: 14) {
+                                            ForEach(keepWatchingList) { item in
+                                                Button(action: {
+                                                    playingKeepWatchingItem = item
+                                                }) {
+                                                    VStack(alignment: .leading, spacing: 6) {
+                                                        ZStack(alignment: .bottomLeading) {
+                                                            CachedAsyncImage(
+                                                                url: URL(string: item.banner ?? item.details_banner ?? item.poster ?? ""),
+                                                                targetSize: CGSize(width: 440, height: 240)
+                                                            ) { img in
+                                                                img.resizable().scaledToFill()
+                                                            } placeholder: {
+                                                                Rectangle().fill(Color(hex: "1F1F24"))
+                                                            }
+                                                            .frame(width: 220, height: 124)
+                                                            .cornerRadius(8)
+                                                            .clipped()
+
+                                                            // Play Button Overlay
+                                                            Circle()
+                                                                .fill(Color.black.opacity(0.6))
+                                                                .frame(width: 36, height: 36)
+                                                                .overlay(
+                                                                    Image(systemName: "play.fill")
+                                                                        .font(.system(size: 14))
+                                                                        .foregroundColor(.white)
+                                                                )
+                                                                .position(x: 110, y: 62)
+
+                                                            // Progress Bar
+                                                            GeometryReader { geo in
+                                                                ZStack(alignment: .leading) {
+                                                                    Rectangle()
+                                                                        .fill(Color.white.opacity(0.3))
+                                                                        .frame(height: 3)
+                                                                    Rectangle()
+                                                                        .fill(Color.red)
+                                                                        .frame(width: max(0, geo.size.width * CGFloat(item.progress)), height: 3)
+                                                                }
+                                                            }
+                                                            .frame(height: 3)
+                                                            .cornerRadius(1.5)
+                                                            .padding(.horizontal, 4)
+                                                            .padding(.bottom, 4)
+                                                        }
+
+                                                        Text(item.name ?? "")
+                                                            .font(.system(size: 13, weight: .bold))
+                                                            .foregroundColor(.white)
+                                                            .lineLimit(1)
+                                                            .frame(width: 220, alignment: .leading)
+
+                                                        Text(item.displaySubtitle)
+                                                            .font(.system(size: 11))
+                                                            .foregroundColor(.white.opacity(0.6))
+                                                            .lineLimit(1)
+                                                            .frame(width: 220, alignment: .leading)
+                                                    }
+                                                }
+                                                .buttonStyle(ScaleButtonStyle())
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
                                 }
                             }
 
@@ -109,6 +192,27 @@ public struct HomeView: View {
                     AnimeDetailView(animeId: id)
                 }
             }
+            .fullScreenCover(item: $playingKeepWatchingItem) { item in
+                PlayerView(
+                    animeId: item.ID,
+                    seasonNumber: item.season,
+                    episode: item.episode != nil ? Episode(
+                        ID: "\(item.ID)_\(item.season ?? 1)_\(item.episode!)",
+                        name: nil,
+                        number: StringOrNumber(item.episode!),
+                        overview: nil,
+                        release: nil,
+                        run_time: nil,
+                        quality: nil,
+                        banner_link: nil,
+                        next_episode: nil,
+                        download: nil
+                    ) : nil,
+                    animeTitle: item.name ?? "",
+                    isMovie: item.isMovie,
+                    startTime: item.time ?? 0
+                )
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -137,6 +241,15 @@ public struct HomeView: View {
         .onAppear {
             if homeData == nil {
                 loadData()
+            } else if auth.isLoggedIn {
+                loadKeepWatching()
+            }
+        }
+        .onChange(of: auth.isLoggedIn) { loggedIn in
+            if loggedIn {
+                loadKeepWatching()
+            } else {
+                keepWatchingList = []
             }
         }
     }
@@ -151,15 +264,27 @@ public struct HomeView: View {
 
     private func loadDataAsync() async {
         do {
-            let res = try await api.fetchHome()
+            async let homeCall = api.fetchHome()
+            async let kwCall: [KeepWatchingItem] = auth.isLoggedIn ? (try? await api.fetchKeepWatching()) ?? [] : []
+            let (res, kw) = try await (homeCall, kwCall)
             await MainActor.run {
                 self.homeData = res
+                self.keepWatchingList = kw
                 self.isLoading = false
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
                 self.isLoading = false
+            }
+        }
+    }
+
+    private func loadKeepWatching() {
+        Task {
+            let kw = (try? await api.fetchKeepWatching()) ?? []
+            await MainActor.run {
+                self.keepWatchingList = kw
             }
         }
     }

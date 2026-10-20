@@ -48,8 +48,11 @@ public final class AuthManager: ObservableObject {
                 if let savedProfileId = UserDefaults.standard.string(forKey: "active_profile_id"),
                    let match = user.profiles?.first(where: { $0.ID == savedProfileId }) {
                     self.activeProfile = match
-                } else {
-                    self.activeProfile = user.profiles?.first
+                } else if let firstProfile = user.profiles?.first {
+                    self.activeProfile = firstProfile
+                    if let id = firstProfile.ID {
+                        UserDefaults.standard.set(id, forKey: "active_profile_id")
+                    }
                 }
             }
         } catch {
