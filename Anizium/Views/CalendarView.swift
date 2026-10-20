@@ -130,14 +130,57 @@ public struct CalendarView: View {
         }
     }
 
+    private func parseCalendarDate(_ day: CalendarDay) -> Date? {
+        guard let title = day.title else { return nil }
+        let parts = title.components(separatedBy: " ")
+        guard parts.count >= 2, let dayNum = Int(parts[0]) else { return nil }
+        let monthStr = parts[1]
+        let months: [String: Int] = [
+            "Ocak": 1, "Şubat": 2, "Mart": 3, "Nisan": 4, "Mayıs": 5, "Haziran": 6,
+            "Temmuz": 7, "Ağustos": 8, "Eylül": 9, "Ekim": 10, "Kasım": 11, "Aralık": 12
+        ]
+        guard let month = months[monthStr] else { return nil }
+        let now = Date()
+        let cal = Calendar.current
+        let currentYear = cal.component(.year, from: now)
+        let currentMonth = cal.component(.month, from: now)
+        let year = (month < currentMonth && currentMonth >= 9 && month <= 4) ? currentYear + 1 : currentYear
+
+        var comp = DateComponents()
+        comp.year = year
+        comp.month = month
+        comp.day = dayNum
+        return cal.date(from: comp)
+    }
+
     private func loadCalendar() {
         isLoading = true
         errorMessage = nil
         Task {
             do {
                 let res = try await api.fetchCalendar()
+                let now = Date()
+                let cal = Calendar.current
+                // Cutoff is 7 days ago: Previous weeks' calendar days are pruned daily
+                let cutoffDate = cal.date(byAdding: .day, value: -7, to: now) ?? now
+
+                let filtered = res.filter { day in
+                    guard let date = parseCalendarDate(day) else { return true }
+                    return date >= cutoffDate
+                }
+
+                // Default selection directly to today or earliest upcoming day
+                let todayIdx = filtered.firstIndex(where: { day in
+                    guard let date = parseCalendarDate(day) else { return false }
+                    return cal.isDate(date, inSameDayAs: now)
+                }) ?? filtered.firstIndex(where: { day in
+                    guard let date = parseCalendarDate(day) else { return false }
+                    return date >= now
+                }) ?? 0
+
                 await MainActor.run {
-                    self.days = res
+                    self.days = filtered
+                    self.selectedIndex = min(todayIdx, max(0, filtered.count - 1))
                     self.isLoading = false
                 }
             } catch {

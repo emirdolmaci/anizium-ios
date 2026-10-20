@@ -30,6 +30,49 @@ public enum GestureHUDType: Equatable {
     }
 }
 
+public enum SleepTimerOption: Int, CaseIterable, Identifiable {
+    case off = 0
+    case min15 = 15
+    case min30 = 30
+    case min45 = 45
+    case min60 = 60
+    case endOfEpisode = -1
+
+    public var id: Int { self.rawValue }
+
+    public var title: String {
+        switch self {
+        case .off: return "Kapalı"
+        case .min15: return "15 Dakika"
+        case .min30: return "30 Dakika"
+        case .min45: return "45 Dakika"
+        case .min60: return "60 Dakika"
+        case .endOfEpisode: return "Bölüm Bittiğinde"
+        }
+    }
+}
+
+#if os(iOS)
+public struct AirPlayButton: UIViewRepresentable {
+    public init() {}
+    public func makeUIView(context: Context) -> AVRoutePickerView {
+        let picker = AVRoutePickerView()
+        picker.tintColor = .white
+        picker.activeTintColor = .red
+        picker.prioritizesVideoDevices = true
+        return picker
+    }
+    public func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+}
+#else
+public struct AirPlayButton: View {
+    public init() {}
+    public var body: some View {
+        EmptyView()
+    }
+}
+#endif
+
 public struct PlayerView: View {
     public let animeId: String
     public let seasonNumber: Int?
@@ -120,6 +163,17 @@ public struct PlayerView: View {
     @State private var gestureHUD: GestureHUDType? = nil
     @State private var gestureHUDTimer: Timer?
     @State private var dragStartValue: Double? = nil
+
+    // Autoplay Next Episode Countdown
+    @State private var showAutoplayOverlay = false
+    @State private var autoplayCountdown: Int = 5
+    @State private var autoplayTimer: Timer?
+    @State private var isAutoplayCancelled = false
+
+    // Sleep Timer
+    @State private var sleepTimer: SleepTimerOption = .off
+    @State private var sleepTimerSecondsRemaining: Int = 0
+    @State private var sleepTimerTask: Timer?
 
     // Premium Prompt Modal / Sheet
     @State private var showPremiumAlert = false
@@ -315,7 +369,7 @@ public struct PlayerView: View {
                     }
 
                     // Next Episode Button
-                    if showNextEpisode {
+                    if showNextEpisode && !showAutoplayOverlay {
                         VStack {
                             Spacer()
                             HStack {
@@ -339,6 +393,58 @@ public struct PlayerView: View {
                         }
                     }
 
+                    // Autoplay Next Episode Countdown Overlay
+                    if showAutoplayOverlay, let nextEp = nextEpisodeItem {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Sonraki Bölüm (\(autoplayCountdown)s)")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.red)
+                                        Text(nextEp.name ?? "\(nextEp.episodeNumber). Bölüm")
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .lineLimit(1)
+                                    }
+
+                                    Button(action: {
+                                        playNextEpisode()
+                                    }) {
+                                        Image(systemName: "play.fill")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .padding(8)
+                                            .background(Color.red)
+                                            .clipShape(Circle())
+                                    }
+
+                                    Button(action: cancelAutoplay) {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(.white.opacity(0.7))
+                                            .padding(6)
+                                            .background(Color.white.opacity(0.15))
+                                            .clipShape(Circle())
+                                    }
+                                }
+                                .padding(10)
+                                .background(Color.black.opacity(0.85))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.red.opacity(0.6), lineWidth: 1)
+                                )
+                                .shadow(color: .red.opacity(0.3), radius: 8)
+                                .padding(.trailing, 24)
+                                .padding(.bottom, showControls ? 100 : 40)
+                            }
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                    }
+
                     // Player Controls Overlay
                     if showControls && !isScreenLocked {
                         PlayerControlsOverlay(
@@ -350,6 +456,7 @@ public struct PlayerView: View {
                             canDownload: !isMovie && localURL == nil && currentEpisode != nil,
                             isDownloaded: downloadManager.isDownloaded(id: currentEpisode?.id ?? ""),
                             isDownloading: downloadManager.isDownloading(id: currentEpisode?.id ?? ""),
+                            sleepTimer: sleepTimer,
                             availableGroups: availableGroups,
                             selectedGroup: selectedGroup,
                             availableStreams: availableStreams,
@@ -363,6 +470,7 @@ public struct PlayerView: View {
                                 withAnimation { showEpisodesDrawer.toggle() }
                             },
                             onDownloadTap: handleDownloadTap,
+                            onSelectSleepTimer: setSleepTimer,
                             onSelectGroup: switchAudioGroup,
                             onSelectStream: switchQuality,
                             onSelectSpeed: setPlaybackSpeed,
@@ -450,6 +558,15 @@ public struct PlayerView: View {
                                                                 Text("Şu an oynatılıyor")
                                                                     .font(.system(size: 10, weight: .bold))
                                                                     .foregroundColor(.red.opacity(0.8))
+                                                            } else {
+                                                                let prog = UserDefaults.standard.double(forKey: "watch_prog_\(animeId)_\(ep.id)")
+                                                                if prog > 0.03 {
+                                                                    ZStack(alignment: .leading) {
+                                                                        Capsule().fill(Color.white.opacity(0.2)).frame(width: 80, height: 3)
+                                                                        Capsule().fill(Color.red).frame(width: 80 * CGFloat(min(1.0, prog)), height: 3)
+                                                                    }
+                                                                    .padding(.top, 2)
+                                                                }
                                                             }
                                                         }
 
@@ -643,6 +760,8 @@ public struct PlayerView: View {
 
     private func selectEpisodeFromDrawer(_ ep: Episode) {
         cleanUpPlayer()
+        cancelAutoplay()
+        self.isAutoplayCancelled = false
         self.currentEpisode = ep
         self.currentTime = 0
         self.duration = 0
@@ -650,6 +769,75 @@ public struct PlayerView: View {
             self.showEpisodesDrawer = false
         }
         loadSource()
+    }
+
+    private var nextEpisodeItem: Episode? {
+        guard let cur = currentEpisode else { return nil }
+        return allEpisodes.first(where: { $0.episodeNumber == cur.episodeNumber + 1 })
+    }
+
+    private func startAutoplayCountdown() {
+        guard !showAutoplayOverlay, !isAutoplayCancelled, nextEpisodeItem != nil else { return }
+        showAutoplayOverlay = true
+        autoplayCountdown = 5
+        autoplayTimer?.invalidate()
+        autoplayTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if self.autoplayCountdown > 1 {
+                self.autoplayCountdown -= 1
+            } else {
+                timer.invalidate()
+                self.showAutoplayOverlay = false
+                self.playNextEpisode()
+            }
+        }
+    }
+
+    private func cancelAutoplay() {
+        showAutoplayOverlay = false
+        isAutoplayCancelled = true
+        autoplayTimer?.invalidate()
+        autoplayTimer = nil
+    }
+
+    private func playNextEpisode() {
+        cancelAutoplay()
+        if let next = nextEpisodeItem {
+            selectEpisodeFromDrawer(next)
+        } else {
+            dismiss()
+        }
+    }
+
+    private func setSleepTimer(_ option: SleepTimerOption) {
+        self.sleepTimer = option
+        sleepTimerTask?.invalidate()
+        sleepTimerTask = nil
+
+        if option == .off || option == .endOfEpisode {
+            sleepTimerSecondsRemaining = 0
+            return
+        }
+
+        sleepTimerSecondsRemaining = option.rawValue * 60
+        sleepTimerTask = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if self.sleepTimerSecondsRemaining > 1 {
+                self.sleepTimerSecondsRemaining -= 1
+            } else {
+                timer.invalidate()
+                self.triggerSleepTimer()
+            }
+        }
+    }
+
+    private func triggerSleepTimer() {
+        sleepTimerTask?.invalidate()
+        sleepTimer = .off
+        player?.pause()
+        isPlaying = false
+        showGestureHUD(.volume(0))
+        #if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        #endif
     }
 
     private func handleDownloadTap() {
@@ -859,8 +1047,14 @@ public struct PlayerView: View {
         guard currentTime > 5 else { return }
         let time = currentTime
         let id = animeId
-        let season = seasonNumber
-        let ep = episode?.episodeNumber
+        let season = currentSeasonNumber ?? seasonNumber
+        let ep = currentEpisode?.episodeNumber ?? episode?.episodeNumber
+
+        if let epId = currentEpisode?.id ?? episode?.id, duration > 0 {
+            let ratio = min(1.0, max(0.0, time / duration))
+            UserDefaults.standard.set(ratio, forKey: "watch_prog_\(id)_\(epId)")
+        }
+
         Task {
             try? await api.saveKeepWatching(
                 id: id,
@@ -872,6 +1066,19 @@ public struct PlayerView: View {
     }
 
     private func checkIntroAndOutro(currentTime: Double) {
+        // Sleep Timer: End of Episode check
+        if sleepTimer == .endOfEpisode && duration > 10 && currentTime >= (duration - 1.5) {
+            triggerSleepTimer()
+            return
+        }
+
+        // Autoplay Next Episode Countdown: trigger within last 12 seconds
+        if !isMovie && nextEpisodeItem != nil && sleepTimer != .endOfEpisode && duration > 20 && currentTime >= (duration - 12) {
+            if !showAutoplayOverlay && !isAutoplayCancelled {
+                startAutoplayCountdown()
+            }
+        }
+
         guard let content = sourceResponse?.content else { return }
 
         // Skip intro check
@@ -897,10 +1104,6 @@ public struct PlayerView: View {
             seekTo(introEndTime)
             showSkipIntro = false
         }
-    }
-
-    private func playNextEpisode() {
-        dismiss()
     }
 
     private func togglePlayPause() {
@@ -1051,6 +1254,7 @@ struct PlayerControlsOverlay: View {
     let canDownload: Bool
     let isDownloaded: Bool
     let isDownloading: Bool
+    let sleepTimer: SleepTimerOption
 
     let availableGroups: [SourceGroup]
     let selectedGroup: SourceGroup?
@@ -1064,6 +1268,7 @@ struct PlayerControlsOverlay: View {
     let onSeek: (Double) -> Void
     let onToggleEpisodesDrawer: () -> Void
     let onDownloadTap: () -> Void
+    let onSelectSleepTimer: (SleepTimerOption) -> Void
     let onSelectGroup: (SourceGroup) -> Void
     let onSelectStream: (StreamItem) -> Void
     let onSelectSpeed: (Float) -> Void
@@ -1269,6 +1474,31 @@ struct PlayerControlsOverlay: View {
                             .background(Color.white.opacity(0.2))
                             .clipShape(Circle())
                     }
+
+                    // Sleep Timer Menu
+                    Menu {
+                        ForEach(SleepTimerOption.allCases) { opt in
+                            Button(action: { onSelectSleepTimer(opt) }) {
+                                HStack {
+                                    Text(opt.title)
+                                    if sleepTimer == opt {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: sleepTimer != .off ? "moon.fill" : "moon")
+                            .font(.system(size: 14))
+                            .foregroundColor(sleepTimer != .off ? .yellow : .white)
+                            .padding(6)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
+                    }
+
+                    // AirPlay TV Picker
+                    AirPlayButton()
+                        .frame(width: 28, height: 28)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)

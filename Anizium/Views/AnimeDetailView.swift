@@ -234,6 +234,7 @@ public struct AnimeDetailView: View {
                                             }) {
                                                 EpisodeRowView(
                                                     episode: ep,
+                                                    animeId: animeId,
                                                     onDownload: {
                                                         handleEpisodeDownload(ep)
                                                     },
@@ -558,13 +559,19 @@ struct CommentRowView: View {
 
 struct EpisodeRowView: View {
     let episode: Episode
+    var animeId: String = ""
     var onDownload: (() -> Void)? = nil
     var isDownloaded: Bool = false
     var isDownloading: Bool = false
 
+    private var watchProgress: Double {
+        guard !animeId.isEmpty else { return 0 }
+        return UserDefaults.standard.double(forKey: "watch_prog_\(animeId)_\(episode.id)")
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottom) {
                 CachedAsyncImage(
                     url: URL(string: episode.banner_link ?? ""),
                     targetSize: CGSize(width: 240, height: 140)
@@ -578,14 +585,33 @@ struct EpisodeRowView: View {
                 .clipped()
 
                 if let runTime = episode.run_time?.stringValue {
-                    Text("\(runTime) dk")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.8))
-                        .cornerRadius(3)
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text("\(runTime) dk")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.8))
+                                .cornerRadius(3)
+                        }
                         .padding(4)
+                        Spacer()
+                    }
+                    .frame(width: 120, height: 70)
+                }
+
+                if watchProgress > 0 {
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(width: 120, height: 3)
+                        Rectangle()
+                            .fill(Color.red)
+                            .frame(width: 120 * CGFloat(min(1.0, watchProgress)), height: 3)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 1.5))
                 }
             }
 
