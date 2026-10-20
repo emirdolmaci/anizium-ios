@@ -10,6 +10,7 @@ public struct AvatarPickerView: View {
 
     @State private var groups: [AvatarGroup] = []
     @State private var searchText = ""
+    @State private var filterMode = 0 // 0: Tümü, 1: GIF, 2: Statik
     @State private var isLoading = true
     @State private var isSetting = false
     @State private var selectedAvatarId: String?
@@ -61,6 +62,15 @@ public struct AvatarPickerView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
 
+                    // Type filter picker (GIF / Statik)
+                    Picker("Tür", selection: $filterMode) {
+                        Text("Tümü").tag(0)
+                        Text("GIF (Hareketli)").tag(1)
+                        Text("Normal (Statik)").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+
                     if isLoading && groups.isEmpty {
                         Spacer()
                         VStack(spacing: 12) {
@@ -106,12 +116,13 @@ public struct AvatarPickerView: View {
                                         .padding(.horizontal, 16)
 
                                         // Avatars grid
-                                        if let avatars = group.avatar, !avatars.isEmpty {
+                                        let filtered = filterAvatars(group.avatar)
+                                        if !filtered.isEmpty {
                                             LazyVGrid(columns: columns, spacing: 14) {
-                                                ForEach(avatars) { item in
+                                                ForEach(filtered) { item in
                                                     Button(action: { selectAvatar(item) }) {
                                                         VStack(spacing: 6) {
-                                                            ZStack {
+                                                            ZStack(alignment: .topTrailing) {
                                                                 if let link = item.link, let url = URL(string: link) {
                                                                     AnimatedGIFView(url: url)
                                                                         .frame(width: 72, height: 72)
@@ -122,6 +133,17 @@ public struct AvatarPickerView: View {
                                                                         .fill(Color(hex: "1F1F24"))
                                                                         .frame(width: 72, height: 72)
                                                                         .cornerRadius(12)
+                                                                }
+
+                                                                if item.link?.lowercased().hasSuffix(".gif") == true {
+                                                                    Text("GIF")
+                                                                        .font(.system(size: 8, weight: .black))
+                                                                        .foregroundColor(.white)
+                                                                        .padding(.horizontal, 4)
+                                                                        .padding(.vertical, 2)
+                                                                        .background(Color.black.opacity(0.75))
+                                                                        .cornerRadius(4)
+                                                                        .padding(4)
                                                                 }
 
                                                                 if selectedAvatarId == item.id && isSetting {
@@ -172,6 +194,13 @@ public struct AvatarPickerView: View {
             .navigationTitle("Avatar Seç")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Avatarı Kaldır") {
+                        removeAvatar()
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.red)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Kapat") { dismiss() }
                         .foregroundColor(.white)
@@ -260,6 +289,39 @@ public struct AvatarPickerView: View {
         Task {
             do {
                 try await api.setProfileAvatar(id: profileId, avatarSet: avatarSet)
+                await auth.fetchUserDetails()
+                await MainActor.run {
+                    self.isSetting = false
+                    self.onAvatarSelected()
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isSetting = false
+                    self.errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func filterAvatars(_ list: [AvatarItem]?) -> [AvatarItem] {
+        guard let list = list else { return [] }
+        switch filterMode {
+        case 1:
+            return list.filter { $0.link?.lowercased().hasSuffix(".gif") == true }
+        case 2:
+            return list.filter { $0.link?.lowercased().hasSuffix(".gif") == false }
+        default:
+            return list
+        }
+    }
+
+    private func removeAvatar() {
+        guard !isSetting else { return }
+        isSetting = true
+        Task {
+            do {
+                try await api.setProfileAvatar(id: profileId, avatarSet: "delete")
                 await auth.fetchUserDetails()
                 await MainActor.run {
                     self.isSetting = false
