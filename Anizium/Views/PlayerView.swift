@@ -148,7 +148,7 @@ public struct PlayerView: View {
                 // Player Controls Overlay
                 if showControls {
                     PlayerControlsOverlay(
-                        title: "\(animeTitle) - \(episode.number). Bölüm",
+                        title: "\(animeTitle) - \(episode.episodeNumber). Bölüm",
                         isPlaying: $isPlaying,
                         currentTime: $currentTime,
                         duration: duration,
@@ -183,7 +183,7 @@ public struct PlayerView: View {
                 let res = try await api.fetchSource(
                     id: animeId,
                     season: seasonNumber,
-                    episode: episode.number
+                    episode: episode.episodeNumber
                 )
                 await MainActor.run {
                     self.sourceResponse = res
@@ -205,9 +205,9 @@ public struct PlayerView: View {
             return
         }
 
-        self.availableStreams = items.sorted { $0.quality > $1.quality }
+        self.availableStreams = items.sorted { $0.qualityInt > $1.qualityInt }
         // Default to 1080p or best available
-        let best = items.first(where: { $0.quality == 1080 }) ?? items.first!
+        let best = items.first(where: { $0.qualityInt == 1080 }) ?? items.first!
         self.selectedStream = best
 
         if let firstSub = res.subtitles?.first {
@@ -476,7 +476,7 @@ struct PlayerControlsOverlay: View {
                         ForEach(availableStreams) { stream in
                             Button(action: { onSelectStream(stream) }) {
                                 HStack {
-                                    Text("\(stream.quality)p")
+                                    Text("\(stream.qualityInt)p")
                                     if stream.id == selectedStream?.id {
                                         Image(systemName: "checkmark")
                                     }
@@ -484,7 +484,7 @@ struct PlayerControlsOverlay: View {
                             }
                         }
                     } label: {
-                        Text("\(selectedStream?.quality ?? 1080)p")
+                        Text("\(selectedStream?.qualityInt ?? 1080)p")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)

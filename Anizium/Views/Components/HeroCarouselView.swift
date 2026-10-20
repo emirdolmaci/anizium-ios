@@ -77,12 +77,12 @@ public struct HeroCarouselView: View {
                                 .cornerRadius(8)
                             }
 
-                            if let tmdb = item.tmdb_point {
+                            if let score = item.rating, !score.isEmpty {
                                 HStack(spacing: 4) {
                                     Image(systemName: "star.fill")
                                         .font(.system(size: 11))
                                         .foregroundColor(.yellow)
-                                    Text(tmdb)
+                                    Text(score)
                                         .font(.system(size: 13, weight: .bold))
                                         .foregroundColor(.white)
                                 }

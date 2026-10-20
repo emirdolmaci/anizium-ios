@@ -74,8 +74,8 @@ public struct AnimeDetailView: View {
                                     }
 
                                     HStack(spacing: 8) {
-                                        if let year = anime.release_year {
-                                            Text("\(year)")
+                                        if let year = anime.release_year?.stringValue {
+                                            Text(year)
                                                 .font(.system(size: 11, weight: .semibold))
                                                 .foregroundColor(.white.opacity(0.8))
                                                 .padding(.horizontal, 6)
@@ -94,12 +94,12 @@ public struct AnimeDetailView: View {
                                                 .cornerRadius(4)
                                         }
 
-                                        if let tmdb = anime.tmdb_point {
+                                        if let rating = anime.rating, !rating.isEmpty {
                                             HStack(spacing: 2) {
                                                 Image(systemName: "star.fill")
                                                     .font(.system(size: 9))
                                                     .foregroundColor(.yellow)
-                                                Text(tmdb)
+                                                Text(rating)
                                                     .font(.system(size: 11, weight: .bold))
                                                     .foregroundColor(.white)
                                             }
@@ -177,7 +177,7 @@ public struct AnimeDetailView: View {
                                                 Button(action: {
                                                     selectedSeasonIndex = idx
                                                 }) {
-                                                    Text(s.name ?? "Sezon \(s.number ?? (idx + 1))")
+                                                    Text(s.name ?? "Sezon \(s.seasonNumber)")
                                                         .font(.system(size: 13, weight: .bold))
                                                         .foregroundColor(selectedSeasonIndex == idx ? .white : .white.opacity(0.6))
                                                         .padding(.horizontal, 14)
@@ -218,7 +218,7 @@ public struct AnimeDetailView: View {
             if let anime = detail {
                 PlayerView(
                     animeId: anime.ID,
-                    seasonNumber: (anime.seasons?[safe: selectedSeasonIndex]?.number) ?? 1,
+                    seasonNumber: (anime.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1,
                     episode: ep,
                     animeTitle: anime.name ?? ""
                 )
@@ -285,7 +285,7 @@ struct EpisodeRowView: View {
                 .cornerRadius(6)
                 .clipped()
 
-                if let runTime = episode.run_time {
+                if let runTime = episode.run_time?.stringValue {
                     Text("\(runTime) dk")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.white)
@@ -298,7 +298,7 @@ struct EpisodeRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(episode.number). Bölüm")
+                Text("\(episode.episodeNumber). Bölüm")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
 

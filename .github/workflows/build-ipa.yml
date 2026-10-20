@@ -66,11 +66,11 @@ jobs:
           path: dist/Anizium.ipa
           if-no-files-found: error
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh release delete v2.1.0 --yes || true
           gh release create v2.1.0 dist/Anizium.ipa \
             --title "Anizium iOS v2.1.0 (.ipa)" \
-            --notes "Anizium iOS Sideloadable IPA (Unsigned, compatible with AltStore, Sideloadly, TrollStore, Scarlet)" \
-            --clobber || true
+            --notes "Anizium iOS Sideloadable IPA (Ad-Hoc / Sideloading ready for AltStore, TrollStore, Scarlet, Sideloadly)"

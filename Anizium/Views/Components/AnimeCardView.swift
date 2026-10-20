@@ -10,10 +10,7 @@ public struct AnimeCardView: View {
     }
 
     private var posterURL: URL? {
-        if let link = anime.banner_link, let url = URL(string: link) {
-            return url
-        }
-        if let p = anime.poster, let url = URL(string: p) {
+        if let link = anime.posterURLString, let url = URL(string: link) {
             return url
         }
         return nil
@@ -61,7 +58,7 @@ public struct AnimeCardView: View {
                     .frame(width: width, height: width * 0.6)
                     .cornerRadius(10)
 
-                    if let series = anime.series, !series.isEmpty {
+                    if let series = anime.type ?? anime.series, !series.isEmpty {
                         Text(series.uppercased())
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white.opacity(0.9))
@@ -74,7 +71,7 @@ public struct AnimeCardView: View {
                 }
 
                 // Top right quality or rating badge
-                if let score = anime.tmdb_point ?? anime.mal_point, !score.isEmpty {
+                if let score = anime.rating, !score.isEmpty {
                     HStack(spacing: 2) {
                         Image(systemName: "star.fill")
                             .font(.system(size: 8))
