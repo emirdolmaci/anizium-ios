@@ -63,21 +63,21 @@ Doğrudan [anizium.co](https://anizium.co) resmi içerik dağıtım ağı (CDN) 
   <table>
     <tr>
       <td width="50%">
-        <img src="https://x.anizium.co/assets/anime-banner/398980428_1769.webp" width="100%" style="border-radius: 8px;" /><br/>
+        <img src="assets/banners/bleach.png" width="100%" style="border-radius: 8px;" /><br/>
         <b>Bleach: Thousand-Year Blood War</b>
       </td>
       <td width="50%">
-        <img src="https://x.anizium.co/assets/anime-banner/682325073_1959.webp" width="100%" style="border-radius: 8px;" /><br/>
+        <img src="assets/banners/blue_box.png" width="100%" style="border-radius: 8px;" /><br/>
         <b>Blue Box</b>
       </td>
     </tr>
     <tr>
       <td width="50%">
-        <img src="https://x.anizium.co/assets/anime-banner/2882542049687110_1424.webp" width="100%" style="border-radius: 8px;" /><br/>
+        <img src="assets/banners/ao_ashi.png" width="100%" style="border-radius: 8px;" /><br/>
         <b>Ao Ashi</b>
       </td>
       <td width="50%">
-        <img src="https://x.anizium.co/assets/anime-banner/200709895_1119.webp" width="100%" style="border-radius: 8px;" /><br/>
+        <img src="assets/banners/black_clover.png" width="100%" style="border-radius: 8px;" /><br/>
         <b>Black Clover</b>
       </td>
     </tr>

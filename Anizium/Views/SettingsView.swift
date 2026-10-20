@@ -258,6 +258,18 @@ public struct SettingsView: View {
                             Text("2.1.0")
                                 .foregroundColor(.white.opacity(0.6))
                         }
+                        Link(destination: URL(string: "https://anizium.co")!) {
+                            HStack {
+                                Text("Web Sitesi")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text("anizium.co")
+                                    .foregroundColor(.red)
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.red)
+                            }
+                        }
                         HStack {
                             Text("Altyapı")
                             Spacer()
