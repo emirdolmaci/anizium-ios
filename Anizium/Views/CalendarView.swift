@@ -11,9 +11,7 @@ public struct CalendarView: View {
     public init() {}
 
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
+        GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 14)
     ]
 
     public var body: some View {
