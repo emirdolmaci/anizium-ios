@@ -27,16 +27,10 @@ public struct SettingsView: View {
                                 // User Avatar
                                 if let avatarUrlStr = auth.activeProfile?.displayAvatar,
                                    let avatarUrl = URL(string: avatarUrlStr) {
-                                    AsyncImage(url: avatarUrl) { phase in
-                                        if let img = phase.image {
-                                            img.resizable().scaledToFill()
-                                        } else {
-                                            Circle().fill(Color.red.opacity(0.8))
-                                        }
-                                    }
-                                    .frame(width: 52, height: 52)
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(auth.currentUser?.isPremium == true ? Color.yellow : Color.red, lineWidth: 2))
+                                    AnimatedGIFView(url: avatarUrl)
+                                        .frame(width: 52, height: 52)
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(auth.currentUser?.isPremium == true ? Color.yellow : Color.red, lineWidth: 2))
                                 } else {
                                     Circle()
                                         .fill(Color.red)

@@ -421,4 +421,42 @@ public final class AniziumAPI: ObservableObject {
             throw APIError.serverError(http.statusCode)
         }
     }
+
+    public func fetchAvatarList(page: Int = 1, query: String? = nil) async throws -> AvatarPage {
+        var queryItems = [URLQueryItem(name: "page", value: "\(page)")]
+        if let q = query, !q.isEmpty {
+            queryItems.append(URLQueryItem(name: "query", value: q))
+        }
+        guard let request = createRequest(path: "page/avatar-list", queryItems: queryItems) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw APIError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500)
+        }
+        let decoded = try JSONDecoder().decode(AvatarListResponse.self, from: data)
+        guard let pageData = decoded.page else {
+            throw APIError.emptyResponse
+        }
+        return pageData
+    }
+
+    public func setProfileAvatar(id: String, avatarSet: String) async throws {
+        let bodyDict: [String: Any] = [
+            "id": id,
+            "avatar_set": avatarSet
+        ]
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "user/profile/avatar", method: "POST", body: encryptedBody) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = errObj["msg"] as? String {
+                throw APIError.apiMessage(msg)
+            }
+            throw APIError.serverError(http.statusCode)
+        }
+    }
 }

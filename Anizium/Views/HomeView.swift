@@ -220,16 +220,10 @@ public struct HomeView: View {
                     if auth.isLoggedIn {
                         Button(action: { showProfilesSheet = true }) {
                             if let avatarStr = auth.activeProfile?.displayAvatar, let url = URL(string: avatarStr) {
-                                AsyncImage(url: url) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().scaledToFill()
-                                    } else {
-                                        Circle().fill(Color.red)
-                                    }
-                                }
-                                .frame(width: 28, height: 28)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1.5))
+                                AnimatedGIFView(url: url)
+                                    .frame(width: 28, height: 28)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1.5))
                             } else {
                                 Image(systemName: "person.crop.circle.fill")
                                     .font(.system(size: 22))

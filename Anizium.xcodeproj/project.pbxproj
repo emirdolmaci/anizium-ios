@@ -26,6 +26,8 @@
 		A10000132D66000100000013 /* LoginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000132D66000100000013 /* LoginSheetView.swift */; };
 		A10000142D66000100000014 /* PremiumPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000142D66000100000014 /* PremiumPlansView.swift */; };
 		A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000152D66000100000015 /* ProfileSelectionView.swift */; };
+		A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000162D66000100000016 /* AnimatedGIFView.swift */; };
+		A10000172D66000100000017 /* AvatarPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000172D66000100000017 /* AvatarPickerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +52,8 @@
 		A20000132D66000100000013 /* LoginSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth/LoginSheetView.swift; sourceTree = "<group>"; };
 		A20000142D66000100000014 /* PremiumPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumPlansView.swift; sourceTree = "<group>"; };
 		A20000152D66000100000015 /* ProfileSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSelectionView.swift; sourceTree = "<group>"; };
+		A20000162D66000100000016 /* AnimatedGIFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFView.swift; sourceTree = "<group>"; };
+		A20000172D66000100000017 /* AvatarPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarPickerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +130,8 @@
 			children = (
 				A20000042D66000100000004 /* AnimeCardView.swift */,
 				A20000052D66000100000005 /* HeroCarouselView.swift */,
+				A20000162D66000100000016 /* AnimatedGIFView.swift */,
+				A20000172D66000100000017 /* AvatarPickerView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -225,6 +231,8 @@
 				A10000132D66000100000013 /* LoginSheetView.swift in Sources */,
 				A10000142D66000100000014 /* PremiumPlansView.swift in Sources */,
 				A10000152D66000100000015 /* ProfileSelectionView.swift in Sources */,
+				A10000162D66000100000016 /* AnimatedGIFView.swift in Sources */,
+				A10000172D66000100000017 /* AvatarPickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

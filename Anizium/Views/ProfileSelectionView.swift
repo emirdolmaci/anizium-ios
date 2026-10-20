@@ -16,6 +16,7 @@ public struct ProfileSelectionView: View {
     @State private var editName = ""
     @State private var isSavingEdit = false
     @State private var showDeleteConfirm = false
+    @State private var showAvatarPicker = false
 
     public init() {}
 
@@ -56,20 +57,14 @@ public struct ProfileSelectionView: View {
                                                 // Avatar
                                                 if let avatarUrlStr = profile.displayAvatar,
                                                    let url = URL(string: avatarUrlStr) {
-                                                    AsyncImage(url: url) { phase in
-                                                        if let img = phase.image {
-                                                            img.resizable().scaledToFill()
-                                                        } else {
-                                                            Rectangle().fill(Color.red.opacity(0.8))
-                                                        }
-                                                    }
-                                                    .frame(width: 100, height: 100)
-                                                    .cornerRadius(16)
-                                                    .clipped()
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 16)
-                                                            .stroke(auth.activeProfile?.id == profile.id ? Color.red : Color.white.opacity(0.15), lineWidth: auth.activeProfile?.id == profile.id ? 3 : 1)
-                                                    )
+                                                    AnimatedGIFView(url: url)
+                                                        .frame(width: 100, height: 100)
+                                                        .cornerRadius(16)
+                                                        .clipped()
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 16)
+                                                                .stroke(auth.activeProfile?.id == profile.id ? Color.red : Color.white.opacity(0.15), lineWidth: auth.activeProfile?.id == profile.id ? 3 : 1)
+                                                        )
                                                 } else {
                                                     RoundedRectangle(cornerRadius: 16)
                                                         .fill(Color.red)
@@ -221,11 +216,47 @@ public struct ProfileSelectionView: View {
                 NavigationStack {
                     ZStack {
                         Color(hex: "0E0E10").ignoresSafeArea()
-                        VStack(spacing: 20) {
-                            Text("Profili Düzenle")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.top, 20)
+                        VStack(spacing: 16) {
+                            // Avatar Preview & Change Action
+                            VStack(spacing: 8) {
+                                ZStack(alignment: .bottomTrailing) {
+                                    if let avatarUrlStr = profile.displayAvatar, let url = URL(string: avatarUrlStr) {
+                                        AnimatedGIFView(url: url)
+                                            .frame(width: 86, height: 86)
+                                            .cornerRadius(18)
+                                            .clipped()
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 18)
+                                            .fill(Color.red)
+                                            .frame(width: 86, height: 86)
+                                            .overlay(
+                                                Text(String((profile.name ?? "U").prefix(1)).uppercased())
+                                                    .font(.system(size: 32, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            )
+                                    }
+
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 28, height: 28)
+                                        .overlay(
+                                            Image(systemName: "photo.fill")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundColor(.white)
+                                        )
+                                        .offset(x: 4, y: 4)
+                                }
+                                .onTapGesture {
+                                    showAvatarPicker = true
+                                }
+
+                                Button(action: { showAvatarPicker = true }) {
+                                    Text("Avatarı Değiştir (GIF Seç)")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .padding(.top, 10)
 
                             TextField("Profil Adı", text: $editName)
                                 .padding(12)
@@ -279,7 +310,16 @@ public struct ProfileSelectionView: View {
                         }
                     }
                 }
-                .presentationDetents([.height(300)])
+                .presentationDetents([.height(380)])
+            }
+            .sheet(isPresented: $showAvatarPicker) {
+                if let p = editingProfile, let id = p.ID {
+                    AvatarPickerView(profileId: id) {
+                        if let updated = auth.currentUser?.profiles?.first(where: { $0.ID == id }) {
+                            self.editingProfile = updated
+                        }
+                    }
+                }
             }
         }
     }

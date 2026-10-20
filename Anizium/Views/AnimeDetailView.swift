@@ -444,13 +444,9 @@ struct CommentRowView: View {
         HStack(alignment: .top, spacing: 12) {
             // Avatar
             if let avatar = comment.profile_avatar, let url = URL(string: avatar) {
-                CachedAsyncImage(url: url, targetSize: CGSize(width: 72, height: 72)) { img in
-                    img.resizable().scaledToFill()
-                } placeholder: {
-                    Circle().fill(Color.gray.opacity(0.3))
-                }
-                .frame(width: 36, height: 36)
-                .clipShape(Circle())
+                AnimatedGIFView(url: url)
+                    .frame(width: 36, height: 36)
+                    .clipShape(Circle())
             } else {
                 Circle()
                     .fill(Color.red.opacity(0.8))

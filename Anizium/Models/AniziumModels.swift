@@ -568,3 +568,31 @@ public struct RandomAnimeResponse: Codable {
     public let success: Bool?
     public let id: StringOrNumber?
 }
+
+// MARK: - Avatar Models
+public struct AvatarListResponse: Codable {
+    public let success: Bool?
+    public let page: AvatarPage?
+}
+
+public struct AvatarPage: Codable {
+    public let page: Int?
+    public let next_page: Int?
+    public let data: [AvatarGroup]?
+}
+
+public struct AvatarGroup: Codable, Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let logo: String?
+    public let avatar: [AvatarItem]?
+}
+
+public struct AvatarItem: Codable, Identifiable, Hashable {
+    public var id: String { ID }
+    public let ID: String
+    public let name: String?
+    public let link: String?
+    public let avatar_set: String?
+    public let who_use: String?
+}
