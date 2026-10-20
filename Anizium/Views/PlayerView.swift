@@ -3,6 +3,7 @@ import AVKit
 import AVFoundation
 import CoreMedia
 import Combine
+import MediaPlayer
 
 public enum GestureHUDType: Equatable {
     case brightness(Double)
@@ -181,6 +182,19 @@ public struct PlayerView: View {
     @State private var showLoginSheet = false
     @AppStorage("player_aspect_fill") private var isAspectFill: Bool = true
 
+    // Hold to 2X Speed
+    @State private var isHolding2x: Bool = false
+    @State private var preHoldPlaybackRate: Float = 1.0
+
+    // Picture in Picture
+    @State private var triggerPiP: Bool = false
+
+    // Lock Screen & AirPods Controls (MPNowPlaying)
+    #if os(iOS)
+    @State private var nowPlayingArtwork: MPMediaItemArtwork? = nil
+    #endif
+    @State private var lastNowPlayingSyncTime: Double = 0
+
     private var getResumeTime: Double {
         if startTime > 0 { return startTime }
         let id = animeId
@@ -244,9 +258,13 @@ public struct PlayerView: View {
                     }
                 } else if let player = player {
                     // Video Surface (Full Screen forced aspect fill on iPad/iOS by default)
-                    CustomVideoPlayer(player: player, videoGravity: isAspectFill ? .resizeAspectFill : .resizeAspect)
-                        .ignoresSafeArea()
-                        .edgesIgnoringSafeArea(.all)
+                    CustomVideoPlayer(
+                        player: player,
+                        videoGravity: isAspectFill ? .resizeAspectFill : .resizeAspect,
+                        triggerPiP: $triggerPiP
+                    )
+                    .ignoresSafeArea()
+                    .edgesIgnoringSafeArea(.all)
 
                     // Touch & Gesture Interaction Layer
                     Color.clear
@@ -269,6 +287,15 @@ public struct PlayerView: View {
                                     hideGestureHUDWithDelay()
                                 }
                         )
+
+                    // Long Press 2X Speed Overlay (Hold to Speed)
+                    #if os(iOS)
+                    LongPress2xModifier(
+                        onBegan: { startHolding2x() },
+                        onEnded: { stopHolding2x() }
+                    )
+                    .allowsHitTesting(true)
+                    #endif
 
                     // Double-Tap Seek Indicators (<< 10s or 10s >>)
                     if let isForward = seekIndicatorForward {
@@ -341,6 +368,32 @@ public struct PlayerView: View {
                         .shadow(radius: 10)
                         .transition(.opacity)
                         .allowsHitTesting(false)
+                    }
+
+                    // 2X Speed Hold Indicator (YouTube Style)
+                    if isHolding2x {
+                        VStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("2X Hızında Oynatılıyor")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.85))
+                            .cornerRadius(20)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .stroke(Color.red, lineWidth: 1.5)
+                            )
+                            .padding(.top, 24)
+                            Spacer()
+                        }
+                        .allowsHitTesting(false)
+                        .transition(.scale.combined(with: .opacity))
+                        .zIndex(20)
                     }
 
                     // Subtitle Display Overlay (Fully Customizable, unaffected by popups)
@@ -494,6 +547,9 @@ public struct PlayerView: View {
                             onSelectSleepTimer: setSleepTimer,
                             onToggleAspect: {
                                 withAnimation { isAspectFill.toggle() }
+                            },
+                            onTriggerPiP: {
+                                triggerPiP = true
                             },
                             onSelectGroup: switchAudioGroup,
                             onSelectStream: switchQuality,
@@ -681,11 +737,14 @@ public struct PlayerView: View {
 
             try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try? AVAudioSession.sharedInstance().setActive(true)
+            setupRemoteCommands()
+            loadNowPlayingArtwork()
             loadSource()
         }
         .onDisappear {
             saveKeepWatchingProgress()
             cleanUpPlayer()
+            removeRemoteCommands()
         }
         .alert("Premium Özellik", isPresented: $showPremiumAlert) {
             Button("Planları İncele") {
@@ -1029,6 +1088,12 @@ public struct PlayerView: View {
             self.checkIntroAndOutro(currentTime: sec)
             self.updateSubtitle(currentTime: sec)
 
+            // Now Playing Lock Screen Sync
+            if abs(sec - self.lastNowPlayingSyncTime) >= 2.0 {
+                self.lastNowPlayingSyncTime = sec
+                self.updateNowPlayingInfo()
+            }
+
             // Periodic Keep-Watching Sync every 10 seconds
             let currentSecInt = Int(sec)
             if currentSecInt > 5 && currentSecInt != self.lastSavedSecond && currentSecInt % 10 == 0 {
@@ -1182,12 +1247,15 @@ public struct PlayerView: View {
             isPlaying = true
             resetControlsTimer()
         }
+        updateNowPlayingInfo()
     }
 
     private func seekTo(_ seconds: Double) {
         guard let p = player else { return }
         p.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
+        currentTime = seconds
         resetControlsTimer()
+        updateNowPlayingInfo()
     }
 
     private func resetControlsTimer() {
@@ -1209,6 +1277,88 @@ public struct PlayerView: View {
         }
         player?.pause()
         player = nil
+        removeRemoteCommands()
+    }
+
+    // MARK: - Hold to 2X Speed
+    private func startHolding2x() {
+        guard isPlaying, !isScreenLocked, !isHolding2x else { return }
+        isHolding2x = true
+        preHoldPlaybackRate = playbackRate
+        player?.rate = 2.0
+        updateNowPlayingInfo()
+        #if os(iOS)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+    }
+
+    private func stopHolding2x() {
+        guard isHolding2x else { return }
+        isHolding2x = false
+        if isPlaying {
+            player?.rate = preHoldPlaybackRate
+        }
+        updateNowPlayingInfo()
+        #if os(iOS)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    // MARK: - Lock Screen & AirPods Remote (MPNowPlaying)
+    private func setupRemoteCommands() {
+        #if os(iOS)
+        NowPlayingCoordinator.shared.onPlayPause = {
+            self.togglePlayPause()
+        }
+        NowPlayingCoordinator.shared.onSeek = { deltaOrPos in
+            if deltaOrPos == 10 {
+                self.seekTo(min(self.duration, self.currentTime + 10))
+            } else if deltaOrPos == -10 {
+                self.seekTo(max(0, self.currentTime - 10))
+            } else {
+                self.seekTo(deltaOrPos)
+            }
+        }
+        NowPlayingCoordinator.shared.setup()
+        updateNowPlayingInfo()
+        #endif
+    }
+
+    private func removeRemoteCommands() {
+        #if os(iOS)
+        NowPlayingCoordinator.shared.tearDown()
+        #endif
+    }
+
+    private func updateNowPlayingInfo() {
+        #if os(iOS)
+        NowPlayingCoordinator.shared.updateInfo(
+            title: playerTitle,
+            artist: animeTitle,
+            currentTime: currentTime,
+            duration: duration,
+            isPlaying: isPlaying,
+            rate: isHolding2x ? 2.0 : playbackRate,
+            artwork: nowPlayingArtwork
+        )
+        #endif
+    }
+
+    private func loadNowPlayingArtwork() {
+        #if os(iOS)
+        let urlStr = currentEpisode?.banner_link ?? ""
+        guard let url = URL(string: urlStr) else { return }
+        Task {
+            if let (data, _) = try? await URLSession.shared.data(from: url),
+               let uiImage = UIImage(data: data) {
+                let artwork = MPMediaItemArtwork(boundsSize: uiImage.size) { _ in uiImage }
+                await MainActor.run {
+                    self.nowPlayingArtwork = artwork
+                    self.updateNowPlayingInfo()
+                }
+            }
+        }
+        #endif
     }
 
     // MARK: - Subtitles (WebVTT & SRT)
@@ -1309,10 +1459,136 @@ public struct SubtitleCue {
     public let text: String
 }
 
+#if os(iOS)
+struct LongPress2xModifier: UIViewRepresentable {
+    let onBegan: () -> Void
+    let onEnded: () -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        let recognizer = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
+        recognizer.minimumPressDuration = 0.35
+        recognizer.cancelsTouchesInView = false
+        view.addGestureRecognizer(recognizer)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onBegan: onBegan, onEnded: onEnded)
+    }
+
+    class Coordinator: NSObject {
+        let onBegan: () -> Void
+        let onEnded: () -> Void
+
+        init(onBegan: @escaping () -> Void, onEnded: @escaping () -> Void) {
+            self.onBegan = onBegan
+            self.onEnded = onEnded
+        }
+
+        @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+            switch gesture.state {
+            case .began:
+                onBegan()
+            case .ended, .cancelled, .failed:
+                onEnded()
+            default:
+                break
+            }
+        }
+    }
+}
+
+final class NowPlayingCoordinator {
+    static let shared = NowPlayingCoordinator()
+
+    var onPlayPause: (() -> Void)?
+    var onSeek: ((Double) -> Void)?
+
+    func setup() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            DispatchQueue.main.async { self?.onPlayPause?() }
+            return .success
+        }
+        commandCenter.pauseCommand.isEnabled = true
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            DispatchQueue.main.async { self?.onPlayPause?() }
+            return .success
+        }
+        commandCenter.togglePlayPauseCommand.isEnabled = true
+        commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
+            DispatchQueue.main.async { self?.onPlayPause?() }
+            return .success
+        }
+        commandCenter.skipForwardCommand.isEnabled = true
+        commandCenter.skipForwardCommand.preferredIntervals = [10]
+        commandCenter.skipForwardCommand.addTarget { [weak self] _ in
+            DispatchQueue.main.async { self?.onSeek?(10) }
+            return .success
+        }
+        commandCenter.skipBackwardCommand.isEnabled = true
+        commandCenter.skipBackwardCommand.preferredIntervals = [10]
+        commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
+            DispatchQueue.main.async { self?.onSeek?(-10) }
+            return .success
+        }
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            if let posEvent = event as? MPChangePlaybackPositionCommandEvent {
+                let targetSec = posEvent.positionTime
+                DispatchQueue.main.async { self?.onSeek?(targetSec) }
+                return .success
+            }
+            return .commandFailed
+        }
+    }
+
+    func tearDown() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.removeTarget(nil)
+        commandCenter.pauseCommand.removeTarget(nil)
+        commandCenter.togglePlayPauseCommand.removeTarget(nil)
+        commandCenter.skipForwardCommand.removeTarget(nil)
+        commandCenter.skipBackwardCommand.removeTarget(nil)
+        commandCenter.changePlaybackPositionCommand.removeTarget(nil)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        onPlayPause = nil
+        onSeek = nil
+    }
+
+    func updateInfo(title: String, artist: String, currentTime: Double, duration: Double, isPlaying: Bool, rate: Float, artwork: MPMediaItemArtwork?) {
+        var info = [String: Any]()
+        info[MPMediaItemPropertyTitle] = title
+        info[MPMediaItemPropertyArtist] = artist
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(rate) : 0.0
+
+        if let artwork = artwork {
+            info[MPMediaItemPropertyArtwork] = artwork
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+}
+#else
+struct LongPress2xModifier: View {
+    let onBegan: () -> Void
+    let onEnded: () -> Void
+    var body: some View { EmptyView() }
+}
+#endif
+
 // Custom Player Layer
 struct CustomVideoPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
     var videoGravity: AVLayerVideoGravity = .resizeAspectFill
+    @Binding var triggerPiP: Bool
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
@@ -1327,6 +1603,18 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
         if uiViewController.videoGravity != videoGravity {
             uiViewController.videoGravity = videoGravity
+        }
+        if triggerPiP {
+            DispatchQueue.main.async {
+                self.triggerPiP = false
+                #if os(iOS)
+                if let pip = uiViewController.value(forKey: "pictureInPictureController") as? NSObject {
+                    if pip.responds(to: Selector(("startPictureInPicture"))) {
+                        pip.perform(Selector(("startPictureInPicture")))
+                    }
+                }
+                #endif
+            }
         }
     }
 }
@@ -1359,6 +1647,7 @@ struct PlayerControlsOverlay: View {
     let onDownloadTap: () -> Void
     let onSelectSleepTimer: (SleepTimerOption) -> Void
     let onToggleAspect: () -> Void
+    let onTriggerPiP: () -> Void
     let onSelectGroup: (SourceGroup) -> Void
     let onSelectStream: (StreamItem) -> Void
     let onSelectSpeed: (Float) -> Void
@@ -1604,6 +1893,16 @@ struct PlayerControlsOverlay: View {
                     // AirPlay TV Picker
                     AirPlayButton()
                         .frame(width: 28, height: 28)
+
+                    // Picture-in-Picture (PiP) Button
+                    Button(action: onTriggerPiP) {
+                        Image(systemName: "pip.enter")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(6)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)

@@ -82,7 +82,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete v2.3.1 --yes || true
-          gh release create v2.3.1 dist/Anizium.ipa dist/Anizium.dmg \
-            --title "Anizium Universal v2.3.1 (.ipa & .dmg)" \
-            --notes "Anizium Universal Release v2.3.1: Movie & episode resume playback fix (local + cloud sync), WebVTT subtitle parsing & persistence fix, iPad full screen aspect-fill force & toggle, persistent remember device / auto-login for .ipa and .dmg. Ready for 3uTools, AltStore, TrollStore, Scarlet, Sideloadly."
+          gh release delete v2.4.0 --yes || true
+          gh release create v2.4.0 dist/Anizium.ipa dist/Anizium.dmg \
+            --title "Anizium Universal v2.4.0 (.ipa & .dmg)" \
+            --notes "Anizium Universal Release v2.4.0: Hold-to-speed 2X (YouTube style), Picture-in-Picture (PiP background & manual trigger), Lock Screen & AirPods controls with artwork (MPNowPlaying & RemoteCommandCenter), Movie resume & sync fix, iPad full screen force & toggle. Ready for 3uTools, AltStore, TrollStore, Scarlet, Sideloadly."
