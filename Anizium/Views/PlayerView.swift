@@ -1154,6 +1154,16 @@ public struct PlayerView: View {
         }
     }
 
+    private func parseTimeString(_ s: String) -> Double? {
+        let parts = s.split(separator: ":").compactMap { Double($0) }
+        if parts.count == 3 {
+            return parts[0] * 3600 + parts[1] * 60 + parts[2]
+        } else if parts.count == 2 {
+            return parts[0] * 60 + parts[1]
+        }
+        return nil
+    }
+
     private func skipIntro() {
         if introEndTime > 0 {
             seekTo(introEndTime)
