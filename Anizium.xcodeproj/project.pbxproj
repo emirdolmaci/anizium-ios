@@ -1,0 +1,325 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000012D66000100000001 /* AniziumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000012D66000100000001 /* AniziumApp.swift */; };
+		A10000022D66000100000002 /* AniziumModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000022D66000100000002 /* AniziumModels.swift */; };
+		A10000032D66000100000003 /* AniziumAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000032D66000100000003 /* AniziumAPI.swift */; };
+		A10000042D66000100000004 /* AnimeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000042D66000100000004 /* AnimeCardView.swift */; };
+		A10000052D66000100000005 /* HeroCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000052D66000100000005 /* HeroCarouselView.swift */; };
+		A10000062D66000100000006 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000062D66000100000006 /* HomeView.swift */; };
+		A10000072D66000100000007 /* AnimeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000072D66000100000007 /* AnimeDetailView.swift */; };
+		A10000082D66000100000008 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000082D66000100000008 /* PlayerView.swift */; };
+		A10000092D66000100000009 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000092D66000100000009 /* SearchView.swift */; };
+		A100000A2D6600010000000A /* WatchlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000A2D6600010000000A /* WatchlistView.swift */; };
+		A100000B2D6600010000000B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B2D6600010000000B /* SettingsView.swift */; };
+		A100000C2D6600010000000C /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C2D6600010000000C /* MainTabView.swift */; };
+		A100000D2D6600010000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A200000D2D6600010000000D /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000002D66000100000000 /* Anizium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anizium.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000012D66000100000001 /* AniziumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AniziumApp.swift; sourceTree = "<group>"; };
+		A20000022D66000100000002 /* AniziumModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AniziumModels.swift; sourceTree = "<group>"; };
+		A20000032D66000100000003 /* AniziumAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AniziumAPI.swift; sourceTree = "<group>"; };
+		A20000042D66000100000004 /* AnimeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimeCardView.swift; sourceTree = "<group>"; };
+		A20000052D66000100000005 /* HeroCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroCarouselView.swift; sourceTree = "<group>"; };
+		A20000062D66000100000006 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		A20000072D66000100000007 /* AnimeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimeDetailView.swift; sourceTree = "<group>"; };
+		A20000082D66000100000008 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		A20000092D66000100000009 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		A200000A2D6600010000000A /* WatchlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchlistView.swift; sourceTree = "<group>"; };
+		A200000B2D6600010000000B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A200000C2D6600010000000C /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A200000D2D6600010000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A200000E2D6600010000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000012D66000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A40000012D66000100000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000022D66000100000002 /* Anizium */,
+				A40000072D66000100000007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000022D66000100000002 /* Anizium */ = {
+			isa = PBXGroup;
+			children = (
+				A20000012D66000100000001 /* AniziumApp.swift */,
+				A40000032D66000100000003 /* Models */,
+				A40000042D66000100000004 /* Services */,
+				A40000052D66000100000005 /* Views */,
+				A200000D2D6600010000000D /* Assets.xcassets */,
+				A200000E2D6600010000000E /* Info.plist */,
+			);
+			path = Anizium;
+			sourceTree = "<group>";
+		};
+		A40000032D66000100000003 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A20000022D66000100000002 /* AniziumModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A40000042D66000100000004 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A20000032D66000100000003 /* AniziumAPI.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A40000052D66000100000005 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A40000062D66000100000006 /* Components */,
+				A20000062D66000100000006 /* HomeView.swift */,
+				A20000072D66000100000007 /* AnimeDetailView.swift */,
+				A20000082D66000100000008 /* PlayerView.swift */,
+				A20000092D66000100000009 /* SearchView.swift */,
+				A200000A2D6600010000000A /* WatchlistView.swift */,
+				A200000B2D6600010000000B /* SettingsView.swift */,
+				A200000C2D6600010000000C /* MainTabView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A40000062D66000100000006 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				A20000042D66000100000004 /* AnimeCardView.swift */,
+				A20000052D66000100000005 /* HeroCarouselView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		A40000072D66000100000007 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000002D66000100000000 /* Anizium.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000012D66000100000001 /* Anizium */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000012D66000100000001 /* Build configuration list for PBXNativeTarget "Anizium" */;
+			buildPhases = (
+				A70000012D66000100000001 /* Sources */,
+				A30000012D66000100000001 /* Frameworks */,
+				A80000012D66000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Anizium;
+			productName = Anizium;
+			productReference = A20000002D66000100000000 /* Anizium.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000012D66000100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A50000012D66000100000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A60000022D66000100000002 /* Build configuration list for PBXProject "Anizium" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000012D66000100000001;
+			productRefGroup = A40000072D66000100000007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000012D66000100000001 /* Anizium */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A80000012D66000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000D2D6600010000000D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000012D66000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012D66000100000001 /* AniziumApp.swift in Sources */,
+				A10000022D66000100000002 /* AniziumModels.swift in Sources */,
+				A10000032D66000100000003 /* AniziumAPI.swift in Sources */,
+				A10000042D66000100000004 /* AnimeCardView.swift in Sources */,
+				A10000052D66000100000005 /* HeroCarouselView.swift in Sources */,
+				A10000062D66000100000006 /* HomeView.swift in Sources */,
+				A10000072D66000100000007 /* AnimeDetailView.swift in Sources */,
+				A10000082D66000100000008 /* PlayerView.swift in Sources */,
+				A10000092D66000100000009 /* SearchView.swift in Sources */,
+				A100000A2D6600010000000A /* WatchlistView.swift in Sources */,
+				A100000B2D6600010000000B /* SettingsView.swift in Sources */,
+				A100000C2D6600010000000C /* MainTabView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B10000012D66000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B10000022D66000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B10000032D66000100000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 154;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Anizium/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anizium.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B10000042D66000100000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 154;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Anizium/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anizium.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A60000012D66000100000001 /* Build configuration list for PBXNativeTarget "Anizium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000032D66000100000003 /* Debug */,
+				B10000042D66000100000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000022D66000100000002 /* Build configuration list for PBXProject "Anizium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000012D66000100000001 /* Debug */,
+				B10000022D66000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A90000012D66000100000001 /* Project object */;
+}

@@ -1,0 +1,76 @@
+name: Build Anizium iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode.app || true
+          xcodebuild -version
+
+      - name: Build Application (Release Unsigned for arm64)
+        run: |
+          mkdir -p build/Release-iphoneos
+          xcodebuild -project Anizium.xcodeproj \
+                     -scheme Anizium \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -destination 'generic/platform=iOS' \
+                     build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     CONFIGURATION_BUILD_DIR="$(pwd)/build/Release-iphoneos"
+
+      - name: Package Payload and Create Ad-Hoc Signed IPA
+        run: |
+          rm -rf dist
+          mkdir -p dist/Payload
+          cp -R build/Release-iphoneos/Anizium.app dist/Payload/
+
+          # Clean metadata
+          rm -rf dist/Payload/Anizium.app/*.xcent
+          rm -rf dist/Payload/Anizium.app/Metadata.appintents
+
+          # Pre-allocate code signature for 3uTools/AltStore/Sideloadly
+          codesign -s - --force --deep dist/Payload/Anizium.app
+
+          # Strict POSIX permissions
+          chmod -R 755 dist/Payload
+          chmod 644 dist/Payload/Anizium.app/Info.plist
+          chmod +x dist/Payload/Anizium.app/Anizium
+
+          cd dist
+          zip -r -y -q Anizium.ipa Payload
+          rm -rf Payload
+          echo "=== Generated IPA Details ==="
+          ls -lh Anizium.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Anizium-iOS-IPA
+          path: dist/Anizium.ipa
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v2.1.0 dist/Anizium.ipa \
+            --title "Anizium iOS v2.1.0 (.ipa)" \
+            --notes "Anizium iOS Sideloadable IPA (Unsigned, compatible with AltStore, Sideloadly, TrollStore, Scarlet)" \
+            --clobber || true
