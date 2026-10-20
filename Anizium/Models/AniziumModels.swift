@@ -10,7 +10,7 @@ public struct HomeResponse: Codable {
 }
 
 public struct SettlementItem: Codable, Identifiable, Hashable {
-    public var id: String { ID }
+    public var id: String { self.ID }
     public let ID: String
     public let type: String?
     public let logo: String?
@@ -35,7 +35,7 @@ public struct SpecialList: Codable, Identifiable {
 }
 
 public struct AnimeCard: Codable, Identifiable, Hashable {
-    public var id: String { ID }
+    public var id: String { self.ID }
     public let ID: String
     public let name: String?
     public let poster: String?
@@ -56,7 +56,7 @@ public struct AnimeDetailResponse: Codable {
 }
 
 public struct AnimeDetail: Codable, Identifiable {
-    public var id: String { ID }
+    public var id: String { self.ID }
     public let ID: String
     public let type: String?
     public let logo: String?
@@ -84,7 +84,7 @@ public struct AnimeDetail: Codable, Identifiable {
 }
 
 public struct Season: Codable, Identifiable {
-    public var id: String { ID }
+    public var id: String { self.ID }
     public let ID: String
     public let name: String?
     public let number: Int?
@@ -94,7 +94,7 @@ public struct Season: Codable, Identifiable {
 }
 
 public struct Episode: Codable, Identifiable {
-    public var id: String { ID }
+    public var id: String { self.ID }
     public let ID: String
     public let name: String?
     public let number: Int
