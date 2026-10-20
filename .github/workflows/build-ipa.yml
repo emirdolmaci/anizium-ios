@@ -35,7 +35,7 @@ jobs:
                      CODE_SIGN_IDENTITY="" \
                      CONFIGURATION_BUILD_DIR="$(pwd)/build/Release-iphoneos"
 
-      - name: Package Payload and Create Ad-Hoc Signed IPA
+      - name: Package Payload and Create Ad-Hoc Signed IPA and DMG
         run: |
           rm -rf dist
           mkdir -p dist/Payload
@@ -55,15 +55,27 @@ jobs:
 
           cd dist
           zip -r -y -q Anizium.ipa Payload
-          rm -rf Payload
           echo "=== Generated IPA Details ==="
           ls -lh Anizium.ipa
 
-      - name: Upload IPA Artifact
+          # Create DMG for macOS Apple Silicon
+          echo "=== Creating macOS DMG ==="
+          mkdir -p dmg_staging
+          cp -R Payload/Anizium.app dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "Anizium" -srcfolder dmg_staging -ov -format UDZO Anizium.dmg
+          rm -rf dmg_staging
+          rm -rf Payload
+          echo "=== Generated DMG Details ==="
+          ls -lh Anizium.dmg
+
+      - name: Upload Binaries Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Anizium-iOS-IPA
-          path: dist/Anizium.ipa
+          name: Anizium-Apple-Binaries
+          path: |
+            dist/Anizium.ipa
+            dist/Anizium.dmg
           if-no-files-found: error
 
       - name: Create or Update GitHub Release
@@ -71,6 +83,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete v2.1.0 --yes || true
-          gh release create v2.1.0 dist/Anizium.ipa \
-            --title "Anizium iOS v2.1.0 (.ipa)" \
-            --notes "Anizium iOS Sideloadable IPA (Ad-Hoc / Sideloading ready for AltStore, TrollStore, Scarlet, Sideloadly)"
+          gh release create v2.1.0 dist/Anizium.ipa dist/Anizium.dmg \
+            --title "Anizium Universal v2.1.0 (.ipa & .dmg)" \
+            --notes "Anizium Universal Release (.ipa for iOS/iPadOS, .dmg for macOS Apple Silicon). Sideloading ready for 3uTools, AltStore, TrollStore, Scarlet, Sideloadly."
