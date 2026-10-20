@@ -329,4 +329,38 @@ public final class AniziumAPI: ObservableObject {
         }
         _ = try? await session.data(for: request)
     }
+
+    // MARK: - Premium Plans & Gift Code
+    public func fetchPremiumPlans() async throws -> [PremiumPlanData] {
+        guard let request = createRequest(path: "page/premium") else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            return []
+        }
+        let res = try JSONDecoder().decode(PremiumPageResponse.self, from: data)
+        return res.data ?? []
+    }
+
+    public func useGiftCode(code: String) async throws -> String {
+        let bodyDict = ["code": code]
+        guard let encryptedBody = encryptBody(bodyDict),
+              let request = createRequest(path: "premium/gift-code/use", method: "POST", body: encryptedBody) else {
+            throw APIError.invalidURL
+        }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            if let errObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = errObj["msg"] as? String {
+                throw APIError.apiMessage(msg)
+            }
+            throw APIError.serverError(http.statusCode)
+        }
+        if let resObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let msg = resObj["msg"] as? String {
+            return msg
+        }
+        return "Kod başarıyla kullanıldı."
+    }
 }

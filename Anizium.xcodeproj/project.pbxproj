@@ -24,6 +24,7 @@
 		A10000112D66000100000011 /* ImageCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000112D66000100000011 /* ImageCacheService.swift */; };
 		A10000122D66000100000012 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000122D66000100000012 /* CalendarView.swift */; };
 		A10000132D66000100000013 /* LoginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000132D66000100000013 /* LoginSheetView.swift */; };
+		A10000142D66000100000014 /* PremiumPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000142D66000100000014 /* PremiumPlansView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		A20000112D66000100000011 /* ImageCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheService.swift; sourceTree = "<group>"; };
 		A20000122D66000100000012 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		A20000132D66000100000013 /* LoginSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth/LoginSheetView.swift; sourceTree = "<group>"; };
+		A20000142D66000100000014 /* PremiumPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumPlansView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +113,7 @@
 				A200000C2D6600010000000C /* MainTabView.swift */,
 				A20000122D66000100000012 /* CalendarView.swift */,
 				A20000132D66000100000013 /* LoginSheetView.swift */,
+				A20000142D66000100000014 /* PremiumPlansView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -217,6 +220,7 @@
 				A10000112D66000100000011 /* ImageCacheService.swift in Sources */,
 				A10000122D66000100000012 /* CalendarView.swift in Sources */,
 				A10000132D66000100000013 /* LoginSheetView.swift in Sources */,
+				A10000142D66000100000014 /* PremiumPlansView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

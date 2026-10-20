@@ -7,6 +7,7 @@ public struct SettingsView: View {
     @AppStorage("default_quality") private var defaultQuality = "1080p"
 
     @State private var showLoginSheet = false
+    @State private var showPremiumPlansSheet = false
     @State private var showLogoutConfirm = false
     @State private var cacheCleared = false
 
@@ -127,18 +128,18 @@ public struct SettingsView: View {
                     }
                     .listRowBackground(Color(hex: "1F1F24"))
 
-                    // MARK: - Premium Subscription Card
-                    if auth.currentUser?.isPremium == true {
-                        Section(header: Text("ÜYELİK PAKETİ").foregroundColor(.white.opacity(0.5))) {
+                    // MARK: - Premium Subscription Section
+                    Section(header: Text("PREMIUM ÜYELİK").foregroundColor(.white.opacity(0.5))) {
+                        if auth.currentUser?.isPremium == true {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     Image(systemName: "sparkles")
                                         .foregroundColor(.yellow)
-                                    Text("Standart 4K Ultra HD")
+                                    Text(auth.currentUser!.planDisplayName)
                                         .font(.system(size: 15, weight: .bold))
                                         .foregroundColor(.white)
                                     Spacer()
-                                    Text("Süresiz (Infinity)")
+                                    Text(auth.currentUser?.infinity == true ? "Süresiz" : "Aktif")
                                         .font(.system(size: 11, weight: .semibold))
                                         .foregroundColor(.green)
                                         .padding(.horizontal, 8)
@@ -147,22 +148,65 @@ public struct SettingsView: View {
                                         .cornerRadius(4)
                                 }
 
+                                HStack {
+                                    Text("⏳ Kalan Süren:")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.white.opacity(0.7))
+                                    Text(auth.currentUser?.remainingPremiumText ?? "Yok")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(.yellow)
+                                }
+
                                 Divider().background(Color.white.opacity(0.1))
 
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Label("En Yüksek 4K Ultra HD & 2K Video", systemImage: "checkmark.circle.fill")
-                                    Label("Reklamsız ve Kesintisiz Video Deneyimi", systemImage: "checkmark.circle.fill")
-                                    Label("Çoklu Dublaj ve Çoklu Altyazı Desteği", systemImage: "checkmark.circle.fill")
-                                    Label("Kaldığın Yerden Devam Et Senkronizasyonu", systemImage: "checkmark.circle.fill")
-                                    Label("4 Profil ve Eşzamanlı Cihaz Desteği", systemImage: "checkmark.circle.fill")
+                                Button(action: {
+                                    showPremiumPlansSheet = true
+                                }) {
+                                    HStack {
+                                        Text("Paketleri ve Avantajları Görüntüle")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.red)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.white.opacity(0.4))
+                                    }
                                 }
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.75))
+                            }
+                            .padding(.vertical, 6)
+                        } else {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Image(systemName: "crown")
+                                        .foregroundColor(.yellow)
+                                    Text("Premium'a Yükselt")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+
+                                Text("4K Ultra HD video, çoklu seslendirme/altyazı ve reklamsız kesintisiz yayın için paketleri inceleyin.")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.6))
+
+                                Button(action: {
+                                    showPremiumPlansSheet = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "sparkles")
+                                        Text("Planları İncele / Hediye Kodu")
+                                    }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                                }
                             }
                             .padding(.vertical, 6)
                         }
-                        .listRowBackground(Color(hex: "1F1F24"))
                     }
+                    .listRowBackground(Color(hex: "1F1F24"))
 
                     // MARK: - Playback Settings
                     Section(header: Text("OYNATMA AYARLARI").foregroundColor(.white.opacity(0.5))) {
@@ -223,6 +267,9 @@ public struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showLoginSheet) {
                 LoginSheetView()
+            }
+            .sheet(isPresented: $showPremiumPlansSheet) {
+                PremiumPlansView()
             }
             .alert("Çıkış Yapılsın mı?", isPresented: $showLogoutConfirm) {
                 Button("İptal", role: .cancel) {}

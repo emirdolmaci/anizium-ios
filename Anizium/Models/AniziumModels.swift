@@ -299,7 +299,105 @@ public struct UserProfile: Codable, Identifiable {
     public let profiles: [ProfileItem]?
 
     public var isPremium: Bool {
-        (premium?.active == true) || (infinity == true)
+        if infinity == true { return true }
+        guard let p = premium, p.active == true, let t = p.time, let c = p.created else {
+            return false
+        }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let remainingMs = t - (now - c)
+        return remainingMs > 0 || t > 8640000000000
+    }
+
+    public var remainingPremiumText: String {
+        guard let p = premium, let t = p.time, let c = p.created else {
+            return "Yok"
+        }
+        if infinity == true {
+            return "Sonsuz (Ömür Boyu)"
+        }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let remainingMs = t - (now - c)
+        if remainingMs <= 0 {
+            return "Süresi Bitti"
+        }
+        let sec = (remainingMs / 1000) % 60
+        let min = (remainingMs / 60000) % 60
+        let hr = (remainingMs / 3600000) % 24
+        let day = (remainingMs / 86400000) % 365
+        let yr = remainingMs / 31536000000
+
+        if yr > 50 {
+            return "Sonsuz (Ömür Boyu)"
+        }
+
+        var parts: [String] = []
+        if yr > 0 { parts.append("\(yr) yıl") }
+        if day > 0 { parts.append("\(day) gün") }
+        if hr > 0 { parts.append("\(hr) saat") }
+        if min > 0 { parts.append("\(min) dakika") }
+        if sec > 0 { parts.append("\(sec) saniye") }
+
+        return parts.prefix(2).joined(separator: " ")
+    }
+
+    public var planDisplayName: String {
+        if infinity == true {
+            return "Sonsuz (Infinity)"
+        }
+        return premium_plan?.name ?? "Standart"
+    }
+}
+
+// MARK: - Official Premium Plans Models
+public struct PremiumPageResponse: Codable {
+    public let success: Bool?
+    public let data: [PremiumPlanData]?
+}
+
+public struct PremiumPlanData: Codable, Identifiable {
+    public var id: String { value ?? "\(ID ?? 0)" }
+    public let ID: Int?
+    public let value: String?
+    public let plan: String?
+    public let active: Bool?
+    public let name: String?
+    public let day_text: String?
+    public let day: Int64?
+    public let view_price: Double?
+    public let price: Double?
+    public let renewal_price: Double?
+    public let discount: PlanDiscount?
+    public let advantages: [String]?
+    public let alternatives: [PlanAlternative]?
+
+    public var isInfinity: Bool {
+        value == "infinity" || (day ?? 0) > 3650
+    }
+}
+
+public struct PlanDiscount: Codable {
+    public let active: Bool?
+    public let percent: Int?
+    public let original_price: Double?
+}
+
+public struct PlanAlternative: Codable, Identifiable {
+    public var id: String { "\(self.idField ?? "")_\(link)" }
+    public let idField: String?
+    public let link: String
+
+    enum CodingKeys: String, CodingKey {
+        case idField = "id"
+        case link
+    }
+
+    public var platformName: String {
+        switch idField {
+        case "itemsatis": return "İtemsatış"
+        case "shopier": return "Shopier"
+        case "gumroad": return "Gumroad"
+        default: return idField?.capitalized ?? "Satın Al"
+        }
     }
 }
 
