@@ -349,22 +349,27 @@ public struct AnimeDetailView: View {
         }
         .fullScreenCover(item: $playingEpisode) { ep in
             if let anime = detail {
+                let sNum = (anime.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1
+                let saved = UserDefaults.standard.double(forKey: "saved_time_\(anime.ID)_s\(sNum)_e\(ep.episodeNumber)")
                 PlayerView(
                     animeId: anime.ID,
-                    seasonNumber: (anime.seasons?[safe: selectedSeasonIndex]?.seasonNumber) ?? 1,
+                    seasonNumber: sNum,
                     episode: ep,
                     animeTitle: anime.name ?? "",
                     isMovie: false,
+                    startTime: saved > 0 ? saved : UserDefaults.standard.double(forKey: "saved_time_\(anime.ID)"),
                     episodes: anime.seasons?[safe: selectedSeasonIndex]?.episodes
                 )
             }
         }
         .fullScreenCover(isPresented: $isPlayingMovie) {
             if let anime = detail {
+                let saved = UserDefaults.standard.double(forKey: "saved_time_\(anime.ID)_movie")
                 PlayerView(
                     animeId: anime.ID,
                     animeTitle: anime.name ?? "",
-                    isMovie: true
+                    isMovie: true,
+                    startTime: saved > 0 ? saved : UserDefaults.standard.double(forKey: "saved_time_\(anime.ID)")
                 )
             }
         }

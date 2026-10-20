@@ -8,18 +8,38 @@ public final class AuthManager: ObservableObject {
     @Published public var currentUser: UserProfile?
     @Published public var activeProfile: ProfileItem?
 
+    public var savedUsername: String {
+        UserDefaults.standard.string(forKey: "saved_auth_username") ?? ""
+    }
+
+    public var savedPassword: String {
+        UserDefaults.standard.string(forKey: "saved_auth_password") ?? ""
+    }
+
     private init() {
         let token = UserDefaults.standard.string(forKey: "user_session")
-        self.isLoggedIn = (token != nil && !token!.isEmpty)
-        if isLoggedIn {
+        if let token = token, !token.isEmpty {
+            self.isLoggedIn = true
             Task {
                 await fetchUserDetails()
+            }
+        } else if !savedUsername.isEmpty && !savedPassword.isEmpty {
+            Task {
+                await performAutoLogin()
             }
         }
     }
 
-    public func login(token: String) {
+    public func login(token: String, username: String? = nil, password: String? = nil, remember: Bool = true) {
         UserDefaults.standard.set(token, forKey: "user_session")
+        if remember {
+            if let u = username, !u.isEmpty {
+                UserDefaults.standard.set(u, forKey: "saved_auth_username")
+            }
+            if let p = password, !p.isEmpty {
+                UserDefaults.standard.set(p, forKey: "saved_auth_password")
+            }
+        }
         self.isLoggedIn = true
         Task {
             await fetchUserDetails()
@@ -28,9 +48,24 @@ public final class AuthManager: ObservableObject {
 
     public func logout() {
         UserDefaults.standard.removeObject(forKey: "user_session")
+        UserDefaults.standard.removeObject(forKey: "saved_auth_password")
         self.isLoggedIn = false
         self.currentUser = nil
         self.activeProfile = nil
+    }
+
+    public func performAutoLogin() async {
+        guard !savedUsername.isEmpty && !savedPassword.isEmpty else { return }
+        do {
+            let res = try await AniziumAPI.shared.login(value: savedUsername, password: savedPassword)
+            if let session = res.session, !session.isEmpty {
+                await MainActor.run {
+                    self.login(token: session, username: self.savedUsername, password: self.savedPassword, remember: true)
+                }
+            }
+        } catch {
+            print("Auto login failed: \(error)")
+        }
     }
 
     public func selectProfile(_ profile: ProfileItem) {
@@ -57,6 +92,8 @@ public final class AuthManager: ObservableObject {
             }
         } catch {
             print("Fetch user details error: \(error)")
+            // If session expired or unauthorized, attempt background auto re-login
+            await performAutoLogin()
         }
     }
 }

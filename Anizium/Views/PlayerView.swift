@@ -179,6 +179,23 @@ public struct PlayerView: View {
     @State private var showPremiumAlert = false
     @State private var showPremiumPlans = false
     @State private var showLoginSheet = false
+    @AppStorage("player_aspect_fill") private var isAspectFill: Bool = true
+
+    private var getResumeTime: Double {
+        if startTime > 0 { return startTime }
+        let id = animeId
+        if isMovie {
+            let movieSaved = UserDefaults.standard.double(forKey: "saved_time_\(id)_movie")
+            if movieSaved > 0 { return movieSaved }
+            return UserDefaults.standard.double(forKey: "saved_time_\(id)")
+        } else {
+            let s = currentSeasonNumber ?? seasonNumber ?? 1
+            let e = currentEpisode?.episodeNumber ?? episode?.episodeNumber ?? 1
+            let epSaved = UserDefaults.standard.double(forKey: "saved_time_\(id)_s\(s)_e\(e)")
+            if epSaved > 0 { return epSaved }
+            return UserDefaults.standard.double(forKey: "saved_time_\(id)")
+        }
+    }
 
     private var subtitleBgColor: Color {
         switch subBgMode {
@@ -226,9 +243,10 @@ public struct PlayerView: View {
                             .cornerRadius(6)
                     }
                 } else if let player = player {
-                    // Video Surface
-                    CustomVideoPlayer(player: player)
+                    // Video Surface (Full Screen forced aspect fill on iPad/iOS by default)
+                    CustomVideoPlayer(player: player, videoGravity: isAspectFill ? .resizeAspectFill : .resizeAspect)
                         .ignoresSafeArea()
+                        .edgesIgnoringSafeArea(.all)
 
                     // Touch & Gesture Interaction Layer
                     Color.clear
@@ -325,7 +343,7 @@ public struct PlayerView: View {
                         .allowsHitTesting(false)
                     }
 
-                    // Subtitle Display Overlay (Fully Customizable)
+                    // Subtitle Display Overlay (Fully Customizable, unaffected by popups)
                     if !currentSubtitleText.isEmpty {
                         VStack {
                             Spacer()
@@ -340,7 +358,9 @@ public struct PlayerView: View {
                                 .shadow(color: .black, radius: subBgMode == "shadow_only" ? 5 : 2, x: 0, y: 1)
                                 .padding(.bottom, (showControls ? 95 : 35) + CGFloat(subBottomOffset))
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .allowsHitTesting(false)
+                        .zIndex(10)
                     }
 
                     // Skip Intro Button
@@ -457,6 +477,7 @@ public struct PlayerView: View {
                             isDownloaded: downloadManager.isDownloaded(id: currentEpisode?.id ?? ""),
                             isDownloading: downloadManager.isDownloading(id: currentEpisode?.id ?? ""),
                             sleepTimer: sleepTimer,
+                            isAspectFill: isAspectFill,
                             availableGroups: availableGroups,
                             selectedGroup: selectedGroup,
                             availableStreams: availableStreams,
@@ -471,6 +492,9 @@ public struct PlayerView: View {
                             },
                             onDownloadTap: handleDownloadTap,
                             onSelectSleepTimer: setSleepTimer,
+                            onToggleAspect: {
+                                withAnimation { isAspectFill.toggle() }
+                            },
                             onSelectGroup: switchAudioGroup,
                             onSelectStream: switchQuality,
                             onSelectSpeed: setPlaybackSpeed,
@@ -890,7 +914,7 @@ public struct PlayerView: View {
     private func loadSource() {
         if let local = localURL {
             self.isLoading = false
-            initAVPlayer(url: local, startAt: startTime)
+            initAVPlayer(url: local, startAt: getResumeTime)
             return
         }
 
@@ -936,12 +960,17 @@ public struct PlayerView: View {
             ?? groups.first!
 
         self.selectedGroup = defaultGroup
-        setupStreamsForGroup(defaultGroup, resumeAt: startTime)
+        setupStreamsForGroup(defaultGroup, resumeAt: getResumeTime)
 
-        // Subtitles setup (default off for Turkish dub, on for Japanese)
-        if defaultGroup.group != "trdub", let firstSub = res.subtitles?.first(where: { $0.group == "tr" }) ?? res.subtitles?.first {
-            self.selectedSubtitle = firstSub
-            loadSubtitles(from: firstSub.link)
+        // Subtitles setup (load Turkish sub if available or first sub)
+        if let subs = res.subtitles, !subs.isEmpty {
+            let preferredSub = subs.first(where: { ($0.group ?? "").lowercased().contains("tr") || ($0.name ?? "").lowercased().contains("türk") }) ?? subs.first
+            if defaultGroup.group != "trdub" || subs.count == 1 {
+                self.selectedSubtitle = preferredSub
+                if let link = preferredSub?.link {
+                    loadSubtitles(from: link)
+                }
+            }
         }
     }
 
@@ -966,8 +995,20 @@ public struct PlayerView: View {
         self.player = p
         self.isLoading = false
 
-        if startAt > 0 {
-            p.seek(to: CMTime(seconds: startAt, preferredTimescale: 600))
+        let effectiveStart = startAt > 0 ? startAt : getResumeTime
+        if effectiveStart > 3 {
+            if playerItem.status == .readyToPlay {
+                p.seek(to: CMTime(seconds: effectiveStart, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+            } else {
+                var observer: NSKeyValueObservation?
+                observer = playerItem.observe(\.status, options: [.new]) { item, _ in
+                    if item.status == .readyToPlay {
+                        p.seek(to: CMTime(seconds: effectiveStart, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                        observer?.invalidate()
+                        observer = nil
+                    }
+                }
+            }
         }
 
         p.rate = playbackRate
@@ -1050,16 +1091,30 @@ public struct PlayerView: View {
         let season = currentSeasonNumber ?? seasonNumber
         let ep = currentEpisode?.episodeNumber ?? episode?.episodeNumber
 
-        if let epId = currentEpisode?.id ?? episode?.id, duration > 0 {
-            let ratio = min(1.0, max(0.0, time / duration))
-            UserDefaults.standard.set(ratio, forKey: "watch_prog_\(id)_\(epId)")
+        if isMovie {
+            UserDefaults.standard.set(time, forKey: "saved_time_\(id)_movie")
+            UserDefaults.standard.set(time, forKey: "saved_time_\(id)")
+            if duration > 0 {
+                let ratio = min(1.0, max(0.0, time / duration))
+                UserDefaults.standard.set(ratio, forKey: "watch_prog_\(id)_movie")
+                UserDefaults.standard.set(ratio, forKey: "watch_prog_\(id)")
+            }
+        } else {
+            if let s = season, let e = ep {
+                UserDefaults.standard.set(time, forKey: "saved_time_\(id)_s\(s)_e\(e)")
+            }
+            UserDefaults.standard.set(time, forKey: "saved_time_\(id)")
+            if let epId = currentEpisode?.id ?? episode?.id, duration > 0 {
+                let ratio = min(1.0, max(0.0, time / duration))
+                UserDefaults.standard.set(ratio, forKey: "watch_prog_\(id)_\(epId)")
+            }
         }
 
         Task {
             try? await api.saveKeepWatching(
                 id: id,
-                season: season,
-                episode: ep,
+                season: isMovie ? nil : season,
+                episode: isMovie ? nil : ep,
                 time: time
             )
         }
@@ -1146,17 +1201,25 @@ public struct PlayerView: View {
         player = nil
     }
 
-    // MARK: - Subtitles (WebVTT)
+    // MARK: - Subtitles (WebVTT & SRT)
     private func loadSubtitles(from urlStr: String) {
-        guard let url = URL(string: urlStr) else { return }
+        var cleanUrl = urlStr.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanUrl.hasPrefix("//") {
+            cleanUrl = "https:" + cleanUrl
+        } else if !cleanUrl.hasPrefix("http://") && !cleanUrl.hasPrefix("https://") {
+            cleanUrl = "https://api.anizium.co" + (cleanUrl.hasPrefix("/") ? "" : "/") + cleanUrl
+        }
+        guard let url = URL(string: cleanUrl) else { return }
         Task {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
-                if let str = String(data: data, encoding: .utf8) {
-                    let parsed = parseWebVTT(str)
-                    await MainActor.run {
-                        self.subtitles = parsed
-                    }
+                let str = String(data: data, encoding: .utf8)
+                    ?? String(data: data, encoding: .windowsCP1254)
+                    ?? String(data: data, encoding: .isoLatin1)
+                    ?? String(decoding: data, as: UTF8.self)
+                let parsed = parseWebVTT(str)
+                await MainActor.run {
+                    self.subtitles = parsed
                 }
             } catch {
                 print("Subtitle load error: \(error)")
@@ -1166,41 +1229,48 @@ public struct PlayerView: View {
 
     private func updateSubtitle(currentTime: Double) {
         if let match = subtitles.first(where: { currentTime >= $0.start && currentTime <= $0.end }) {
-            self.currentSubtitleText = match.text
+            if self.currentSubtitleText != match.text {
+                self.currentSubtitleText = match.text
+            }
         } else {
-            self.currentSubtitleText = ""
+            if !self.currentSubtitleText.isEmpty {
+                self.currentSubtitleText = ""
+            }
         }
-    }
-
-    private func parseTimeString(_ s: String) -> Double? {
-        let parts = s.split(separator: ":").compactMap { Double($0) }
-        if parts.count == 3 {
-            return parts[0] * 3600 + parts[1] * 60 + parts[2]
-        } else if parts.count == 2 {
-            return parts[0] * 60 + parts[1]
-        }
-        return nil
     }
 
     private func parseWebVTT(_ text: String) -> [SubtitleCue] {
         var cues: [SubtitleCue] = []
-        let lines = text.components(separatedBy: .newlines)
+        let normalized = text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalized.components(separatedBy: "\n")
         var i = 0
 
         while i < lines.count {
-            let line = lines[i].trimmingCharacters(in: .whitespaces)
+            let line = lines[i].trimmingCharacters(in: .whitespacesAndNewlines)
             if line.contains("-->") {
                 let parts = line.components(separatedBy: "-->")
                 if parts.count == 2,
-                   let start = parseVttTimestamp(parts[0].trimmingCharacters(in: .whitespaces)),
-                   let end = parseVttTimestamp(parts[1].trimmingCharacters(in: .whitespaces).components(separatedBy: " ").first ?? "") {
+                   let start = parseVttTimestamp(parts[0]),
+                   let end = parseVttTimestamp(parts[1].components(separatedBy: " ").first ?? "") {
                     i += 1
-                    var cueText = ""
-                    while i < lines.count && !lines[i].trimmingCharacters(in: .whitespaces).isEmpty {
-                        cueText += (cueText.isEmpty ? "" : "\n") + lines[i]
+                    var cueLines: [String] = []
+                    while i < lines.count {
+                        let textLine = lines[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                        if textLine.isEmpty { break }
+                        if textLine.contains("-->") {
+                            i -= 1
+                            break
+                        }
+                        // Strip WebVTT/HTML formatting tags
+                        let clean = textLine.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+                        if !clean.isEmpty {
+                            cueLines.append(clean)
+                        }
                         i += 1
                     }
-                    cues.append(SubtitleCue(start: start, end: end, text: cueText))
+                    if !cueLines.isEmpty {
+                        cues.append(SubtitleCue(start: start, end: end, text: cueLines.joined(separator: "\n")))
+                    }
                 }
             }
             i += 1
@@ -1209,8 +1279,11 @@ public struct PlayerView: View {
     }
 
     private func parseVttTimestamp(_ s: String) -> Double? {
-        let clean = s.replacingOccurrences(of: ",", with: ".")
-        let parts = clean.split(separator: ":").compactMap { Double($0) }
+        let clean = s.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        let parts = clean.split(separator: ":").compactMap { sub -> Double? in
+            let str = String(sub).trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(str)
+        }
         if parts.count == 3 {
             return parts[0] * 3600 + parts[1] * 60 + parts[2]
         } else if parts.count == 2 {
@@ -1229,18 +1302,23 @@ public struct SubtitleCue {
 // Custom Player Layer
 struct CustomVideoPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
+    var videoGravity: AVLayerVideoGravity = .resizeAspectFill
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = player
         controller.showsPlaybackControls = false
-        controller.videoGravity = .resizeAspect
+        controller.videoGravity = videoGravity
         controller.allowsPictureInPicturePlayback = true
         controller.canStartPictureInPictureAutomaticallyFromInline = true
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        if uiViewController.videoGravity != videoGravity {
+            uiViewController.videoGravity = videoGravity
+        }
+    }
 }
 
 // Overlay Controls
@@ -1255,6 +1333,7 @@ struct PlayerControlsOverlay: View {
     let isDownloaded: Bool
     let isDownloading: Bool
     let sleepTimer: SleepTimerOption
+    let isAspectFill: Bool
 
     let availableGroups: [SourceGroup]
     let selectedGroup: SourceGroup?
@@ -1269,6 +1348,7 @@ struct PlayerControlsOverlay: View {
     let onToggleEpisodesDrawer: () -> Void
     let onDownloadTap: () -> Void
     let onSelectSleepTimer: (SleepTimerOption) -> Void
+    let onToggleAspect: () -> Void
     let onSelectGroup: (SourceGroup) -> Void
     let onSelectStream: (StreamItem) -> Void
     let onSelectSpeed: (Float) -> Void
@@ -1370,6 +1450,21 @@ struct PlayerControlsOverlay: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
                         .background(Color.white.opacity(0.2))
+                        .cornerRadius(5)
+                    }
+
+                    // Aspect Mode Button (Tam Ekran Doldur / Sığdır)
+                    Button(action: onToggleAspect) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isAspectFill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 11))
+                            Text(isAspectFill ? "Tam Ekran" : "Sığdır")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(isAspectFill ? Color.red.opacity(0.8) : Color.white.opacity(0.2))
                         .cornerRadius(5)
                     }
 

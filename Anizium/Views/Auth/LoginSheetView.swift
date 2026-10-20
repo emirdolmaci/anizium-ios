@@ -5,10 +5,11 @@ public struct LoginSheetView: View {
     @StateObject private var auth = AuthManager.shared
 
     @State private var isRegisterMode = false
-    @State private var username = ""
+    @State private var username = AuthManager.shared.savedUsername
     @State private var email = ""
-    @State private var password = ""
+    @State private var password = AuthManager.shared.savedPassword
     @State private var confirmPassword = ""
+    @State private var rememberDevice = true
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -83,6 +84,20 @@ public struct LoginSheetView: View {
                                 )
                             }
                         }
+                        .padding(.horizontal, 24)
+
+                        // Remember Device Toggle
+                        Toggle(isOn: $rememberDevice) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.shield.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.red)
+                                Text("Bu Cihazı Hatırla (Otomatik Giriş)")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                        }
+                        .tint(.red)
                         .padding(.horizontal, 24)
 
                         if let err = errorMessage {
@@ -190,7 +205,12 @@ public struct LoginSheetView: View {
                     await MainActor.run {
                         isLoading = false
                         if let session = res.session, !session.isEmpty {
-                            auth.login(token: session)
+                            auth.login(
+                                token: session,
+                                username: username.trimmingCharacters(in: .whitespaces),
+                                password: password,
+                                remember: true
+                            )
                             dismiss()
                         } else {
                             errorMessage = res.msg ?? res.message ?? "Kayıt başarılı, lütfen giriş yapın."
@@ -211,16 +231,23 @@ public struct LoginSheetView: View {
                 return
             }
             isLoading = true
+            let userVal = username.trimmingCharacters(in: .whitespaces)
+            let passVal = password
             Task {
                 do {
                     let res = try await AniziumAPI.shared.login(
-                        value: username.trimmingCharacters(in: .whitespaces),
-                        password: password
+                        value: userVal,
+                        password: passVal
                     )
                     await MainActor.run {
                         isLoading = false
                         if let session = res.session, !session.isEmpty {
-                            auth.login(token: session)
+                            auth.login(
+                                token: session,
+                                username: userVal,
+                                password: passVal,
+                                remember: rememberDevice
+                            )
                             dismiss()
                         } else {
                             errorMessage = res.msg ?? res.message ?? "Giriş başarısız."
