@@ -589,10 +589,18 @@ public struct AvatarGroup: Codable, Identifiable {
 }
 
 public struct AvatarItem: Codable, Identifiable, Hashable {
-    public var id: String { ID }
-    public let ID: String
+    public var id: String { self.item_id ?? self.avatar_set ?? UUID().uuidString }
+    public let item_id: String?
     public let name: String?
     public let link: String?
     public let avatar_set: String?
     public let who_use: String?
+
+    enum CodingKeys: String, CodingKey {
+        case item_id = "ID"
+        case name
+        case link
+        case avatar_set
+        case who_use
+    }
 }

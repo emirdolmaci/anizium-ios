@@ -124,7 +124,7 @@ public struct AvatarPickerView: View {
                                                                         .cornerRadius(12)
                                                                 }
 
-                                                                if selectedAvatarId == item.ID && isSetting {
+                                                                if selectedAvatarId == item.id && isSetting {
                                                                     Color.black.opacity(0.6)
                                                                         .cornerRadius(12)
                                                                     ProgressView().tint(.white)
@@ -132,7 +132,7 @@ public struct AvatarPickerView: View {
                                                             }
                                                             .overlay(
                                                                 RoundedRectangle(cornerRadius: 12)
-                                                                    .stroke(selectedAvatarId == item.ID ? Color.red : Color.white.opacity(0.1), lineWidth: selectedAvatarId == item.ID ? 2.5 : 1)
+                                                                    .stroke(selectedAvatarId == item.id ? Color.red : Color.white.opacity(0.1), lineWidth: selectedAvatarId == item.id ? 2.5 : 1)
                                                             )
 
                                                             if let name = item.name, !name.isEmpty {
@@ -254,7 +254,7 @@ public struct AvatarPickerView: View {
 
     private func selectAvatar(_ item: AvatarItem) {
         guard let avatarSet = item.avatar_set, !isSetting else { return }
-        selectedAvatarId = item.ID
+        selectedAvatarId = item.id
         isSetting = true
 
         Task {
